@@ -1,4 +1,15 @@
-# Ignore all docx files
-
-*.xlsx
+# Exclude all Word documents
+*.doc
 *.docx
+
+# Exclude all Excel documents
+*.xls
+*.xlsx
+*.xlsm
+*.xlsb
+*.xlt
+*.xltx
+*.xltm
+
+# Exclude all CSV files
+*.csv

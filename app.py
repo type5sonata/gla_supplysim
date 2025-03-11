@@ -75,7 +75,7 @@ def generate_quarter_labels(start_year, start_quarter, num_quarters):
     
     return labels
 
-def apply_policies_to_parameters(base_params, policies, current_quarter_label):
+def apply_policies_to_parameters(base_params, policies, current_quarter_label, development_type):
     """Apply active policies to modify the base parameters"""
     modified_params = base_params.copy()
     
@@ -87,6 +87,10 @@ def apply_policies_to_parameters(base_params, policies, current_quarter_label):
     for policy in policies:
         policy_year = int(policy['year'])
         policy_quarter = int(policy['quarter'])
+        
+        # Skip if policy doesn't apply to this development type
+        if policy.get('target_type', 'All') != "All" and policy.get('target_type') != development_type:
+            continue
         
         # Check if policy is active (current time is at or after policy start)
         if (current_year > policy_year) or (current_year == policy_year and current_quarter >= policy_quarter):
@@ -141,7 +145,7 @@ def run_pipeline_simulation(name, simulation_length, init_planning, init_approve
     # Run simulation and collect data
     for quarter_idx, quarter_label in enumerate(quarters):
         # Apply active policies for this quarter
-        current_params = apply_policies_to_parameters(base_params, policies, quarter_label)
+        current_params = apply_policies_to_parameters(base_params, policies, quarter_label, name)
         
         # Set rates for this quarter
         pipeline.application_rate = current_params['application_rate']
@@ -285,6 +289,18 @@ with tab_policies:
     # Form for adding new policies
     with st.form("add_policy"):
         st.subheader("Add New Policy")
+        
+        # First row: Policy name and target type
+        col_name, col_type = st.columns(2)
+        policy_name = col_name.text_input("Policy Name", 
+                                        value="New Policy",
+                                        help="Give your policy a descriptive name")
+        
+        target_type = col_type.selectbox("Target Development Type",
+                                       ["All", "Large Private Sites", "Small Private Sites", "Public Sites"],
+                                       help="Select which type of development this policy affects")
+        
+        # Second row: Timing, parameter, and change
         cols = st.columns(5)
         
         # Policy timing
@@ -309,6 +325,8 @@ with tab_policies:
         # Submit button
         if st.form_submit_button("Add Policy"):
             new_policy = {
+                'name': policy_name,
+                'target_type': target_type,
                 'year': policy_year,
                 'quarter': policy_quarter,
                 'parameter': parameter,
@@ -323,17 +341,25 @@ with tab_policies:
     if not st.session_state.policies:
         st.info("No policies added yet.")
     else:
-        for i, policy in enumerate(st.session_state.policies):
+        # Sort policies by year and quarter
+        sorted_policies = sorted(
+            enumerate(st.session_state.policies),
+            key=lambda x: (x[1]['year'], x[1]['quarter'])
+        )
+        
+        for i, (orig_idx, policy) in enumerate(sorted_policies):
             cols = st.columns([1, 4, 1])
             with cols[1]:
                 st.markdown(f"""
-                **Policy {i+1}:** In {policy['year']} Q{policy['quarter']}, 
-                {policy['change_type'].lower()} change to {policy['parameter']}: 
-                {policy['change_value']} {'%' if policy['change_type'] == 'Percentage' else ''}
+                **{policy['name']}** (Policy {i+1})
+                - **When:** {policy['year']} Q{policy['quarter']}
+                - **Target:** {policy['target_type']}
+                - **Change:** {policy['change_type'].lower()} change to {policy['parameter']}: 
+                  {policy['change_value']} {'%' if policy['change_type'] == 'Percentage' else ''}
                 """)
             with cols[2]:
                 if st.button(f"Delete Policy {i+1}"):
-                    st.session_state.policies.pop(i)
+                    st.session_state.policies.pop(orig_idx)
                     st.rerun()
     
     if st.button("Clear All Policies"):
@@ -388,7 +414,10 @@ with tab_main:
                 start_to_completion_rate=params['start_to_completion_rate'],
                 start_year=start_year,
                 start_quarter=start_quarter,
-                policies=st.session_state.policies  # Add policies to simulation
+                policies=[
+                    {**p, 'target_type': p.get('target_type', 'All')}  # Ensure backward compatibility
+                    for p in st.session_state.policies
+                ]  # Add policies to simulation
             )
             pipeline_results[name] = results
         

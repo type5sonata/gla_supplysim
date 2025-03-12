@@ -94,9 +94,9 @@ def apply_policies_to_parameters(base_params, policies, current_quarter_label, d
         
         # Check if policy is active (current time is at or after policy start)
         if (current_year > policy_year) or (current_year == policy_year and current_quarter >= policy_quarter):
-            param_name = policy['parameter']
-            change_type = policy['change_type']
-            change_value = float(policy['change_value'])
+            param_name = policy.get('parameter')
+            change_type = policy.get('change_type')
+            change_value = float(policy.get('change_value'))
             
             if change_type == 'Absolute':
                 modified_params[param_name] = change_value
@@ -236,7 +236,7 @@ def create_pipeline_parameters(label, col):
                                         help='Proportion of started constructions that successfully complete',
                                         key=f'start_comp_{label}')
     
-    # Initial values
+    # Initial stock values
     col.subheader(f'{label} Initial Values')
     init_planning = col.number_input(f'Initial Planning ({label})', 
                                    value=50000 if label == "Large Private Sites" else 25000,

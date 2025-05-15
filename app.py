@@ -94,10 +94,11 @@ def apply_policies_to_parameters(base_params, policies, current_quarter_label, d
         
         # Check if policy is active (current time is at or after policy start)
         if (current_year > policy_year) or (current_year == policy_year and current_quarter >= policy_quarter):
-            param_name = policy.get('parameter')
-            change_type = policy.get('change_type')
-            change_value = float(policy.get('change_value'))
+            param_name = policy['parameter']
+            change_type = policy['change_type']
+            change_value = float(policy['change_value'])
             
+            # Apply the change directly since we've already handled the time conversion
             if change_type == 'Absolute':
                 modified_params[param_name] = change_value
             elif change_type == 'Percentage':
@@ -309,18 +310,39 @@ with tab_policies:
         
         # Parameter selection
         parameter = cols[2].selectbox("Parameter", [
-            "application_rate",
-            "planning_time",
-            "start_time",
-            "completion_time",
-            "planning_success_rate",
-            "approved_to_start_rate",
-            "start_to_completion_rate"
-        ])
+            ("application_rate", "Application Rate"),
+            ("approval_rate", "Planning Permission Time"),
+            ("start_rate", "Approval to Start Time"),
+            ("completion_rate", "Start to Completion Time"),
+            ("planning_success_rate", "Planning Success Rate"),
+            ("approved_to_start_rate", "Approved to Start Rate"),
+            ("start_to_completion_rate", "Start to Completion Rate")
+        ], format_func=lambda x: x[1])
+        
+        # Store the actual parameter name (first element of tuple)
+        parameter_name = parameter[0]
         
         # Change type and value
         change_type = cols[3].selectbox("Change Type", ["Absolute", "Percentage", "Multiply"])
-        change_value = cols[4].number_input("Change Value", value=0.0)
+        
+        # Adjust value input based on parameter type
+        if parameter_name in ['approval_rate', 'start_rate', 'completion_rate']:
+            # For time-based parameters, input time directly
+            change_value = cols[4].number_input(
+                "Time in Quarters",
+                value=4.0,
+                min_value=0.1,
+                help="Enter the new time in quarters"
+            )
+            # Convert time to rate if it's an absolute change
+            if change_type == "Absolute":
+                actual_change_value = 1.0 / change_value
+            else:
+                actual_change_value = change_value
+        else:
+            # For other parameters, input value directly
+            change_value = cols[4].number_input("Change Value", value=0.0)
+            actual_change_value = change_value
         
         # Submit button
         if st.form_submit_button("Add Policy"):
@@ -329,9 +351,10 @@ with tab_policies:
                 'target_type': target_type,
                 'year': policy_year,
                 'quarter': policy_quarter,
-                'parameter': parameter,
+                'parameter': parameter_name,  # Use the actual parameter name
                 'change_type': change_type,
-                'change_value': change_value
+                'change_value': actual_change_value,
+                'display_value': change_value  # Store original input value for display
             }
             st.session_state.policies.append(new_policy)
             st.success("Policy added!")
@@ -350,12 +373,21 @@ with tab_policies:
         for i, (orig_idx, policy) in enumerate(sorted_policies):
             cols = st.columns([1, 4, 1])
             with cols[1]:
+                # Format the change value based on parameter type
+                if policy['parameter'] in ['approval_rate', 'start_rate', 'completion_rate']:
+                    if policy['change_type'] == "Absolute":
+                        value_display = f"{policy['display_value']} quarters"
+                    else:
+                        value_display = f"{policy['display_value']}{'%' if policy['change_type'] == 'Percentage' else 'x'}"
+                else:
+                    value_display = f"{policy['display_value']}{'%' if policy['change_type'] == 'Percentage' else ''}"
+                
                 st.markdown(f"""
                 **{policy['name']}** (Policy {i+1})
                 - **When:** {policy['year']} Q{policy['quarter']}
                 - **Target:** {policy['target_type']}
                 - **Change:** {policy['change_type'].lower()} change to {policy['parameter']}: 
-                  {policy['change_value']} {'%' if policy['change_type'] == 'Percentage' else ''}
+                  {value_display}
                 """)
             with cols[2]:
                 if st.button(f"Delete Policy {i+1}"):

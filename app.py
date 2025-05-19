@@ -15,15 +15,15 @@ class HousingPipeline:
         self.started = simpy.Container(env, init=init_started)
         self.completed = simpy.Container(env, init=init_completed)
         
-        # Flow rates (proportion of containers processed per quarter)
+        # Flow rates (application rate -- absolute value, or: expected length of time to progress in quarters)
         self.application_rate = 1000  # Keep this fixed as input
-        self.approval_rate = 0.3      # Process 30% of planning applications per quarter
-        self.start_rate = 0.25        # Start 25% of approved applications per quarter
-        self.completion_rate = 0.2    # Complete 20% of started homes per quarter
+        self.approval_rate = 10
+        self.start_rate = 10
+        self.completion_rate = 10
         
         # Success rates (percentage that successfully moves to next stage)
-        self.planning_success_rate = 0.8
-        self.approved_to_start_rate = 0.9
+        self.planning_success_rate = 0.9
+        self.approved_to_start_rate = 0.7
         self.start_to_completion_rate = 0.95
         
         # Start processes
@@ -39,7 +39,7 @@ class HousingPipeline:
     
     def approval_flow(self):
         while True:
-            amount = self.in_planning.level * self.approval_rate
+            amount = self.in_planning.level * 1/self.approval_rate # Convert time to rate
             successful_amount = amount * self.planning_success_rate
             yield self.in_planning.get(amount)
             yield self.approved_not_started.put(successful_amount)
@@ -47,7 +47,7 @@ class HousingPipeline:
     
     def start_flow(self):
         while True:
-            amount = self.approved_not_started.level * self.start_rate
+            amount = self.approved_not_started.level * 1/self.start_rate
             successful_amount = amount * self.approved_to_start_rate
             yield self.approved_not_started.get(amount)
             yield self.started.put(successful_amount)
@@ -55,7 +55,7 @@ class HousingPipeline:
     
     def completion_flow(self):
         while True:
-            amount = self.started.level * self.completion_rate
+            amount = self.started.level * 1/self.completion_rate
             successful_amount = amount * self.start_to_completion_rate
             yield self.started.get(amount)
             yield self.completed.put(successful_amount)
@@ -100,9 +100,7 @@ def apply_policies_to_parameters(base_params, policies, current_quarter_label, d
             
             # Apply the change directly since we've already handled the time conversion
             if change_type == 'Absolute':
-                modified_params[param_name] = change_value
-            elif change_type == 'Percentage':
-                modified_params[param_name] *= (1 + change_value/100)
+                modified_params[param_name] += change_value
             elif change_type == 'Multiply':
                 modified_params[param_name] *= change_value
     

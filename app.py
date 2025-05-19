@@ -276,8 +276,7 @@ with tab_policies:
     st.markdown("""
     Add policies that will change parameters at specific points in time. 
     Each policy can modify a parameter in one of three ways:
-    - Absolute: Set the parameter to a specific value
-    - Percentage: Change the parameter by a percentage (positive or negative)
+    - Absolute: Change the parameter by an absolute value (positive or negative)
     - Multiply: Multiply the parameter by a value
     """)
     
@@ -308,7 +307,7 @@ with tab_policies:
         
         # Parameter selection
         parameter = cols[2].selectbox("Parameter", [
-            ("application_rate", "Application Rate"),
+            ("application_rate", "Number of applications"),
             ("approval_rate", "Planning Permission Time"),
             ("start_rate", "Approval to Start Time"),
             ("completion_rate", "Start to Completion Time"),
@@ -321,27 +320,9 @@ with tab_policies:
         parameter_name = parameter[0]
         
         # Change type and value
-        change_type = cols[3].selectbox("Change Type", ["Absolute", "Percentage", "Multiply"])
-        
-        # Adjust value input based on parameter type
-        if parameter_name in ['approval_rate', 'start_rate', 'completion_rate']:
-            # For time-based parameters, input time directly
-            change_value = cols[4].number_input(
-                "Time in Quarters",
-                value=4.0,
-                min_value=0.1,
-                help="Enter the new time in quarters"
-            )
-            # Convert time to rate if it's an absolute change
-            if change_type == "Absolute":
-                actual_change_value = 1.0 / change_value
-            else:
-                actual_change_value = change_value
-        else:
-            # For other parameters, input value directly
-            change_value = cols[4].number_input("Change Value", value=0.0)
-            actual_change_value = change_value
-        
+        change_type = cols[3].selectbox("Change Type", ["Absolute", "Multiply"])
+        change_value = cols[4].number_input("Change Value", value=0.0)
+
         # Submit button
         if st.form_submit_button("Add Policy"):
             new_policy = {
@@ -351,7 +332,7 @@ with tab_policies:
                 'quarter': policy_quarter,
                 'parameter': parameter_name,  # Use the actual parameter name
                 'change_type': change_type,
-                'change_value': actual_change_value,
+                'change_value': change_value,
                 'display_value': change_value  # Store original input value for display
             }
             st.session_state.policies.append(new_policy)

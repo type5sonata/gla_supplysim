@@ -383,8 +383,8 @@ with tab_main:
     
     # Simulation timing
     st.sidebar.subheader('Simulation Timing')
-    start_year = st.sidebar.number_input('Start Year', value=2025, min_value=2024, max_value=2050)
-    start_quarter = st.sidebar.selectbox('Start Quarter', [1, 2, 3, 4], index=0)
+    start_year = st.sidebar.number_input('Start Year', value=2024, min_value=2024, max_value=2050)
+    start_quarter = st.sidebar.selectbox('Start Quarter', [1, 2, 3, 4], index=1)
     simulation_length = st.sidebar.number_input('Simulation Length (quarters)', value=20, min_value=1, max_value=100)
     
     # Create three columns for pipeline parameters

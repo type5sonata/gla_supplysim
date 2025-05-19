@@ -593,7 +593,7 @@ with tab_main:
             results['Year'] = [q.split()[0] for q in results['Quarter']]
             annual_totals = results.groupby('Year').sum()
             
-            # Annual totals bar chart
+            # Annual totals line chart
             for name, color in [
                 ('Applications', 'blue'),
                 ('Approvals', 'green'),
@@ -601,11 +601,11 @@ with tab_main:
                 ('Completions', 'red')
             ]:
                 fig.add_trace(
-                    go.Bar(
+                    go.Scatter(
                         x=annual_totals.index,
                         y=annual_totals[name],
                         name=f'{name} (Annual)',
-                        marker_color=color,
+                        line=dict(color=color),
                         showlegend=False
                     ),
                     row=2, col=1

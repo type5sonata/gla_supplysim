@@ -124,6 +124,12 @@ def run_pipeline_simulation(name, simulation_length, init_planning, init_approve
     starts = []
     completions = []
     
+    # Lists to store stock values
+    planning_stock = [init_planning]
+    approved_stock = [init_approved]
+    started_stock = [init_started]
+    completed_stock = [init_completed]
+    
     # Previous values for calculating flows
     prev_planning = init_planning
     prev_approved = init_approved
@@ -181,6 +187,12 @@ def run_pipeline_simulation(name, simulation_length, init_planning, init_approve
         prev_approved = pipeline.approved_not_started.level
         prev_started = pipeline.started.level
         prev_completed = pipeline.completed.level
+        
+        # Store stock values
+        planning_stock.append(prev_planning)
+        approved_stock.append(prev_approved)
+        started_stock.append(prev_started)
+        completed_stock.append(prev_completed)
     
     # Create DataFrame with results
     results = pd.DataFrame({
@@ -188,7 +200,11 @@ def run_pipeline_simulation(name, simulation_length, init_planning, init_approve
         'Applications': applications,
         'Approvals': approvals,
         'Starts': starts,
-        'Completions': completions
+        'Completions': completions,
+        'Planning Stock': planning_stock[:-1],  # Exclude last value as it's one step ahead
+        'Approved Stock': approved_stock[:-1],
+        'Started Stock': started_stock[:-1],
+        'Completed Stock': completed_stock[:-1]
     })
     
     return results
@@ -563,13 +579,14 @@ with tab_main:
         
         def create_plots(results, title_prefix=""):
             fig = make_subplots(
-                rows=3, cols=1,
+                rows=4, cols=1,
                 subplot_titles=(
                     f'{title_prefix}Quarterly Flow Rates',
                     f'{title_prefix}Annual Totals',
+                    f'{title_prefix}Stock Evolution'
                 ),
                 vertical_spacing=0.1,
-                row_heights=[0.4, 0.3, 0.3]
+                row_heights=[0.3, 0.3, 0.4, 0.4]
             )
             
             # Flow rates over time (Quarterly)
@@ -611,20 +628,38 @@ with tab_main:
                     row=2, col=1
                 )
             
+            # Stock evolution
+            for name, color in [
+                ('Planning Stock', 'blue'),
+                ('Approved Stock', 'green'),
+                ('Started Stock', 'orange'),
+                ('Completed Stock', 'red')
+            ]:
+                fig.add_trace(
+                    go.Scatter(
+                        x=results['Quarter'],
+                        y=results[name],
+                        name=f'{name}',
+                        line=dict(color=color)
+                    ),
+                    row=3, col=1
+                )
+
             # Update layout
-            fig.update_layout(height=1200, showlegend=True, barmode='group')
+            fig.update_layout(height=1500, showlegend=True, barmode='group')
             
             # Update axes labels
             fig.update_xaxes(title_text='Quarter', row=1, col=1)
             fig.update_xaxes(title_text='Year', row=2, col=1)
-            fig.update_xaxes(title_text='Stage', row=3, col=1)
+            fig.update_xaxes(title_text='Quarter', row=3, col=1)
             
             fig.update_yaxes(title_text='Number of Units per Quarter', row=1, col=1)
             fig.update_yaxes(title_text='Number of Units per Year', row=2, col=1)
-            fig.update_yaxes(title_text='Average Units per Quarter', row=3, col=1)
+            fig.update_yaxes(title_text='Total Units in Stock', row=3, col=1)
             
             # Rotate x-axis labels
             fig.update_xaxes(tickangle=45, row=1, col=1)
+            fig.update_xaxes(tickangle=45, row=3, col=1)
             
             return fig, annual_totals
         

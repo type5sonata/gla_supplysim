@@ -196,62 +196,174 @@ def run_pipeline_simulation(name, simulation_length, init_planning, init_approve
 def create_pipeline_parameters(label, col):
     col.subheader(f'{label} Parameters')
     
-    # Flow times
-    application_rate = col.number_input(f'New Applications per Quarter ({label})', 
-                                      value=1000 if label == "Large Private Sites" else 500, 
-                                      step=100, key=f'app_rate_{label}')
-    
-    planning_time = col.number_input(f'Average Time to Get Planning Permission ({label})', 
-                                   value=15.0 if label == "Large Private Sites" else 12.0, 
-                                   min_value=1.0, step=0.1, 
-                                   help='Average number of quarters it takes to get planning permission',
-                                   key=f'plan_time_{label}')
-    
-    start_time = col.number_input(f'Average Time from Approval to Start ({label})', 
-                                value=6.8 if label == "Large Private Sites" else 5.0, 
-                                min_value=1.0, step=0.1,
-                                help='Average number of quarters between approval and construction start',
-                                key=f'start_time_{label}')
-    
-    completion_time = col.number_input(f'Average Time from Start to Completion ({label})', 
-                                     value=11.8 if label == "Large Private Sites" else 8.0, 
-                                     min_value=1.0, step=0.1,
-                                     help='Average number of quarters from construction start to completion',
-                                     key=f'comp_time_{label}')
-    
-    # Success rates
-    planning_success_rate = col.slider(f'Planning Success Rate ({label})', 
-                                     0.0, 1.0, 0.8,
-                                     help='Proportion of planning applications that are successful',
-                                     key=f'plan_success_{label}')
-    
-    approved_to_start_rate = col.slider(f'Approved to Start Rate ({label})', 
-                                      0.0, 1.0, 0.9,
-                                      help='Proportion of approved developments that successfully start construction',
-                                      key=f'app_start_{label}')
-    
-    start_to_completion_rate = col.slider(f'Start to Completion Rate ({label})', 
-                                        0.0, 1.0, 0.95,
-                                        help='Proportion of started constructions that successfully complete',
-                                        key=f'start_comp_{label}')
-    
-    # Initial stock values
-    col.subheader(f'{label} Initial Values')
-    init_planning = col.number_input(f'Initial Planning ({label})', 
-                                   value=50000 if label == "Large Private Sites" else 25000,
-                                   step=1000,
-                                   key=f'init_plan_{label}')
-    
-    init_approved = col.number_input(f'Initial Approved ({label})', 
-                                   value=115000 if label == "Large Private Sites" else 50000,
-                                   step=1000,
-                                   key=f'init_app_{label}')
-    
-    init_started = col.number_input(f'Initial Started ({label})', 
-                                  value=188000 if label == "Large Private Sites" else 75000,
-                                  step=1000,
-                                  key=f'init_start_{label}')
-    
+    if label == "Large Private Sites":
+        # Flow times
+        application_rate = col.number_input(f'New Applications per Quarter ({label})', 
+                                        value=6455, 
+                                        step=100, key=f'app_rate_{label}')
+        
+        planning_time = col.number_input(f'Average Time to Get Planning Permission ({label})', 
+                                    value=9.3, 
+                                    min_value=1.0, step=0.1, 
+                                    help='Average number of quarters it takes to get planning permission',
+                                    key=f'plan_time_{label}')
+        
+        start_time = col.number_input(f'Average Time from Approval to Start ({label})', 
+                                    value=9.4, 
+                                    min_value=1.0, step=0.1,
+                                    help='Average number of quarters between approval and construction start',
+                                    key=f'start_time_{label}')
+        
+        completion_time = col.number_input(f'Average Time from Start to Completion ({label})', 
+                                        value=28.3, 
+                                        min_value=1.0, step=0.1,
+                                        help='Average number of quarters from construction start to completion',
+                                        key=f'comp_time_{label}')
+        
+        # Success rates
+        planning_success_rate = col.slider(f'Planning Success Rate ({label})', 
+                                        0.0, 1.0, 0.9,
+                                        help='Proportion of planning applications that are successful',
+                                        key=f'plan_success_{label}')
+        
+        approved_to_start_rate = col.slider(f'Approved to Start Rate ({label})', 
+                                        0.0, 1.0, 0.7,
+                                        help='Proportion of approved developments that successfully start construction',
+                                        key=f'app_start_{label}')
+        
+        start_to_completion_rate = col.slider(f'Start to Completion Rate ({label})', 
+                                            0.0, 1.0, 0.9,
+                                            help='Proportion of started constructions that successfully complete',
+                                            key=f'start_comp_{label}')
+        
+        # Initial stock values
+        col.subheader(f'{label} Initial Stock Parameters')
+        init_planning = col.number_input(f'In planning ({label})', 
+                                    value=59743,
+                                    step=1000,
+                                    key=f'init_plan_{label}')
+        
+        init_approved = col.number_input(f'Approved not started ({label})', 
+                                    value=53769,
+                                    step=1000,
+                                    key=f'init_app_{label}')
+        
+        init_started = col.number_input(f'Started ({label})', 
+                                    value=152570,
+                                    step=1000,
+                                    key=f'init_start_{label}')
+    elif label == "Small Private Sites":
+        # Flow times
+        application_rate = col.number_input(f'New Applications per Quarter ({label})', 
+                                        value=1760, 
+                                        step=100, key=f'app_rate_{label}')
+        
+        planning_time = col.number_input(f'Average Time to Get Planning Permission ({label})', 
+                                    value=9.3,
+                                    min_value=1.0, step=0.1, 
+                                    help='Average number of quarters it takes to get planning permission',
+                                    key=f'plan_time_{label}')
+        
+        start_time = col.number_input(f'Average Time from Approval to Start ({label})', 
+                                    value=10.8, 
+                                    min_value=1.0, step=0.1,
+                                    help='Average number of quarters between approval and construction start',
+                                    key=f'start_time_{label}')
+        
+        completion_time = col.number_input(f'Average Time from Start to Completion ({label})', 
+                                        value=24.9, 
+                                        min_value=1.0, step=0.1,
+                                        help='Average number of quarters from construction start to completion',
+                                        key=f'comp_time_{label}')
+        
+        # Success rates
+        planning_success_rate = col.slider(f'Planning Success Rate ({label})', 
+                                        0.0, 1.0, 0.9,
+                                        help='Proportion of planning applications that are successful',
+                                        key=f'plan_success_{label}')
+        
+        approved_to_start_rate = col.slider(f'Approved to Start Rate ({label})', 
+                                        0.0, 1.0, 0.7,
+                                        help='Proportion of approved developments that successfully start construction',
+                                        key=f'app_start_{label}')
+        
+        start_to_completion_rate = col.slider(f'Start to Completion Rate ({label})', 
+                                            0.0, 1.0, 0.9,
+                                            help='Proportion of started constructions that successfully complete',
+                                            key=f'start_comp_{label}')
+        
+        # Initial stock values
+        col.subheader(f'{label} Initial Stock Parameters')
+        init_planning = col.number_input(f'In planning ({label})', 
+                                    value=16427,
+                                    step=1000,
+                                    key=f'init_plan_{label}')
+        
+        init_approved = col.number_input(f'Approved not started ({label})', 
+                                    value=14785,
+                                    step=1000,
+                                    key=f'init_app_{label}')
+        
+        init_started = col.number_input(f'Started ({label})', 
+                                    value=41964,
+                                    step=1000,
+                                    key=f'init_start_{label}')
+    elif label == "Public Sites":
+        # Flow times
+        application_rate = col.number_input(f'New Applications per Quarter ({label})', 
+                                        value=1289, 
+                                        step=100, key=f'app_rate_{label}')
+        
+        planning_time = col.number_input(f'Average Time to Get Planning Permission ({label})', 
+                                    value=9.3,
+                                    min_value=1.0, step=0.1, 
+                                    help='Average number of quarters it takes to get planning permission',
+                                    key=f'plan_time_{label}')
+        
+        start_time = col.number_input(f'Average Time from Approval to Start ({label})', 
+                                    value=15.5, 
+                                    min_value=1.0, step=0.1,
+                                    help='Average number of quarters between approval and construction start',
+                                    key=f'start_time_{label}')
+        
+        completion_time = col.number_input(f'Average Time from Start to Completion ({label})', 
+                                        value=25.6, 
+                                        min_value=1.0, step=0.1,
+                                        help='Average number of quarters from construction start to completion',
+                                        key=f'comp_time_{label}')
+        
+        # Success rates
+        planning_success_rate = col.slider(f'Planning Success Rate ({label})', 
+                                        0.0, 1.0, 0.99,
+                                        help='Proportion of planning applications that are successful',
+                                        key=f'plan_success_{label}')
+        
+        approved_to_start_rate = col.slider(f'Approved to Start Rate ({label})', 
+                                        0.0, 1.0, 0.99,
+                                        help='Proportion of approved developments that successfully start construction',
+                                        key=f'app_start_{label}')
+        
+        start_to_completion_rate = col.slider(f'Start to Completion Rate ({label})', 
+                                            0.0, 1.0, 0.9,
+                                            help='Proportion of started constructions that successfully complete',
+                                            key=f'start_comp_{label}')
+        
+        # Initial stock values
+        col.subheader(f'{label} Initial Stock Parameters')
+        init_planning = col.number_input(f'In planning ({label})', 
+                                    value=59743,
+                                    step=1000,
+                                    key=f'init_plan_{label}')
+        
+        init_approved = col.number_input(f'Approved not started ({label})', 
+                                    value=53769,
+                                    step=1000,
+                                    key=f'init_app_{label}')
+        
+        init_started = col.number_input(f'Started ({label})', 
+                                    value=152570,
+                                    step=1000,
+                                    key=f'init_start_{label}')
     return {
         'application_rate': application_rate,
         'planning_time': planning_time,

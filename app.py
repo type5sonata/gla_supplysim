@@ -455,7 +455,6 @@ with tab_main:
                 subplot_titles=(
                     f'{title_prefix}Quarterly Flow Rates',
                     f'{title_prefix}Annual Totals',
-                    f'{title_prefix}Average Quarterly Flows'
                 ),
                 vertical_spacing=0.1,
                 row_heights=[0.4, 0.3, 0.3]
@@ -500,25 +499,7 @@ with tab_main:
                     row=2, col=1
                 )
             
-            # Average quarterly flows
-            quarters_to_show = min(4, len(results))
-            last_quarters = results.iloc[-quarters_to_show:]
-            
-            fig.add_trace(
-                go.Bar(
-                    x=['Applications', 'Approvals', 'Starts', 'Completions'],
-                    y=[
-                        last_quarters['Applications'].mean(),
-                        last_quarters['Approvals'].mean(),
-                        last_quarters['Starts'].mean(),
-                        last_quarters['Completions'].mean()
-                    ],
-                    name='Average Flow Rate (Last 4 Quarters)',
-                    marker_color=['blue', 'green', 'orange', 'red']
-                ),
-                row=3, col=1
-            )
-            
+
             # Update layout
             fig.update_layout(height=1200, showlegend=True, barmode='group')
             

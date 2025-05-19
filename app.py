@@ -168,17 +168,17 @@ def run_pipeline_simulation(name, simulation_length, init_planning, init_approve
         applications.append(pipeline.application_rate)  # This is already a flow
         
         # Calculate successful approvals
-        approval_amount = prev_planning * pipeline.approval_rate
+        approval_amount = prev_planning * 1/pipeline.approval_rate
         successful_approvals = approval_amount * pipeline.planning_success_rate
         approvals.append(successful_approvals)
         
         # Calculate successful starts
-        start_amount = prev_approved * pipeline.start_rate
+        start_amount = prev_approved * 1/pipeline.start_rate
         successful_starts = start_amount * pipeline.approved_to_start_rate
         starts.append(successful_starts)
         
         # Calculate successful completions
-        completion_amount = prev_started * pipeline.completion_rate
+        completion_amount = prev_started * 1/pipeline.completion_rate
         successful_completions = completion_amount * pipeline.start_to_completion_rate
         completions.append(successful_completions)
         

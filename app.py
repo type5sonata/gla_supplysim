@@ -7,7 +7,7 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 class HousingPipeline:
-    def __init__(self, env, init_planning=50000, init_approved=115000, init_started=188000, init_completed=0):
+    def __init__(self, env, init_planning=1000, init_approved=1000, init_started=1000, init_completed=0):
         self.env = env
         # Containers for each stage and initial amounts
         self.in_planning = simpy.Container(env, init=init_planning)

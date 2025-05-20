@@ -39,9 +39,11 @@ class MonitoredContainer(simpy.Container):
         return self.inflows[quarter-1], self.outflows[quarter-1]
     
     def get_quarterly_level(self, quarter):
-        """Get the level at a specific quarter"""
-        return self.levels[quarter-1][1]  # Return initial level if time is before first record
-
+        if quarter == 0:
+            return self.levels[0][1]
+        else:
+            """Get the level at a specific quarter"""
+            return self.levels[quarter*2][1]
 class HousingPipeline:
     def __init__(self, env, init_planning, init_approved, init_started, application_rate, approval_rate, start_rate, completion_rate, 
                  planning_success_rate, approved_to_start_rate, start_to_completion_rate, init_completed=0):

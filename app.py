@@ -427,6 +427,7 @@ def create_pipeline_parameters(label, col):
     }
 
 def main():
+   
     # Streamlit UI
     st.title('Housing Pipeline Simulation Dashboard')
 
@@ -608,23 +609,33 @@ def main():
             ])
             
             def create_plots(results, title_prefix=""):
+                # Define GLA colors from the grid
+                GLA_COLORS = {
+                    'dark_blue': '#4477AA',    # Top left
+                    'light_blue': '#88CCEE',   # Top middle
+                    'green': '#117733',        # Top right
+                    'yellow': '#DDCC77',       # Bottom left
+                    'red': '#CC6677',          # Bottom middle
+                    'purple': '#AA4499'        # Bottom right
+                }
+
                 fig = make_subplots(
-                    rows=4, cols=1,
+                    rows=3, cols=1,  # Changed from 4 to 3 rows
                     subplot_titles=(
                         f'{title_prefix}Quarterly Flow Rates',
                         f'{title_prefix}Annual Totals',
                         f'{title_prefix}Stock Evolution'
                     ),
                     vertical_spacing=0.1,
-                    row_heights=[0.3, 0.3, 0.4, 0.4]
+                    row_heights=[0.33, 0.33, 0.34]  # Adjusted row heights to fill space evenly
                 )
                 
                 # Flow rates over time (Quarterly)
                 for name, color in [
-                    ('Applications', 'blue'),
-                    ('Approvals', 'green'),
-                    ('Starts', 'orange'),
-                    ('Completions', 'red')
+                    ('Applications', GLA_COLORS['dark_blue']),
+                    ('Approvals', GLA_COLORS['green']),
+                    ('Starts', GLA_COLORS['yellow']),
+                    ('Completions', GLA_COLORS['red'])
                 ]:
                     fig.add_trace(
                         go.Scatter(
@@ -642,10 +653,10 @@ def main():
                 
                 # Annual totals line chart
                 for name, color in [
-                    ('Applications', 'blue'),
-                    ('Approvals', 'green'),
-                    ('Starts', 'orange'),
-                    ('Completions', 'red')
+                    ('Applications', GLA_COLORS['dark_blue']),
+                    ('Approvals', GLA_COLORS['green']),
+                    ('Starts', GLA_COLORS['yellow']),
+                    ('Completions', GLA_COLORS['red'])
                 ]:
                     fig.add_trace(
                         go.Scatter(
@@ -660,10 +671,10 @@ def main():
                 
                 # Stock evolution
                 for name, color in [
-                    ('Planning Stock', 'blue'),
-                    ('Approved Stock', 'green'),
-                    ('Started Stock', 'orange'),
-                    ('Completed Stock', 'red')
+                    ('Planning Stock', GLA_COLORS['dark_blue']),
+                    ('Approved Stock', GLA_COLORS['green']),
+                    ('Started Stock', GLA_COLORS['yellow']),
+                    ('Completed Stock', GLA_COLORS['red'])
                 ]:
                     fig.add_trace(
                         go.Scatter(
@@ -675,17 +686,24 @@ def main():
                         row=3, col=1
                     )
 
-                # Update layout
-                fig.update_layout(height=1500, showlegend=True, barmode='group')
+                # Update layout with light theme
+                fig.update_layout(
+                    height=1500,
+                    showlegend=True,
+                    barmode='group',
+                    plot_bgcolor='#f6f4f2',
+                    paper_bgcolor='#f6f4f2',
+                    font=dict(color='black')
+                )
                 
                 # Update axes labels
-                fig.update_xaxes(title_text='Quarter', row=1, col=1)
-                fig.update_xaxes(title_text='Year', row=2, col=1)
-                fig.update_xaxes(title_text='Quarter', row=3, col=1)
+                fig.update_xaxes(title_text='Quarter', row=1, col=1, gridcolor='lightgrey')
+                fig.update_xaxes(title_text='Year', row=2, col=1, gridcolor='lightgrey')
+                fig.update_xaxes(title_text='Quarter', row=3, col=1, gridcolor='lightgrey')
                 
-                fig.update_yaxes(title_text='Number of Units per Quarter', row=1, col=1, rangemode='nonnegative')
-                fig.update_yaxes(title_text='Number of Units per Year', row=2, col=1, rangemode='nonnegative')
-                fig.update_yaxes(title_text='Total Units in Stock', row=3, col=1, rangemode='nonnegative')
+                fig.update_yaxes(title_text='Number of Units per Quarter', row=1, col=1, rangemode='nonnegative', gridcolor='lightgrey')
+                fig.update_yaxes(title_text='Number of Units per Year', row=2, col=1, rangemode='nonnegative', gridcolor='lightgrey')
+                fig.update_yaxes(title_text='Total Units in Stock', row=3, col=1, rangemode='nonnegative', gridcolor='lightgrey')
                 
                 # Rotate x-axis labels
                 fig.update_xaxes(tickangle=45, row=1, col=1)

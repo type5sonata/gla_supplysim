@@ -80,14 +80,8 @@ class HousingPipeline:
         while True:
             amount = self.in_planning.level * 1/self.approval_rate
             successful_amount = amount * self.planning_success_rate
-            print(f"\nApproval Flow at time {self.env.now}:")
-            print(f"  Current planning level: {self.in_planning.level}")
-            print(f"  Attempting to get {amount} from planning")
-            print(f"  Will put {successful_amount} into approved")
             yield self.in_planning.get(amount)
             yield self.approved_not_started.put(successful_amount)
-            print(f"  After flow - planning level: {self.in_planning.level}")
-            print(f"  After flow - approved level: {self.approved_not_started.level}")
             yield self.env.timeout(1)
     
     def start_flow(self):
@@ -689,9 +683,9 @@ def main():
                 fig.update_xaxes(title_text='Year', row=2, col=1)
                 fig.update_xaxes(title_text='Quarter', row=3, col=1)
                 
-                fig.update_yaxes(title_text='Number of Units per Quarter', row=1, col=1)
-                fig.update_yaxes(title_text='Number of Units per Year', row=2, col=1)
-                fig.update_yaxes(title_text='Total Units in Stock', row=3, col=1)
+                fig.update_yaxes(title_text='Number of Units per Quarter', row=1, col=1, rangemode='nonnegative')
+                fig.update_yaxes(title_text='Number of Units per Year', row=2, col=1, rangemode='nonnegative')
+                fig.update_yaxes(title_text='Total Units in Stock', row=3, col=1, rangemode='nonnegative')
                 
                 # Rotate x-axis labels
                 fig.update_xaxes(tickangle=45, row=1, col=1)

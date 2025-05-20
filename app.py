@@ -7,7 +7,8 @@ import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
 class HousingPipeline:
-    def __init__(self, env, init_planning=1000, init_approved=1000, init_started=1000, init_completed=0):
+    def __init__(self, env, init_planning, init_approved, init_started, application_rate, approval_rate, start_rate, completion_rate, 
+                 planning_success_rate, approved_to_start_rate, start_to_completion_rate, init_completed=0):
         self.env = env
         # Containers for each stage and initial amounts
         self.in_planning = simpy.Container(env, init=init_planning)
@@ -16,15 +17,15 @@ class HousingPipeline:
         self.completed = simpy.Container(env, init=init_completed)
         
         # Flow rates (application rate -- absolute value, or: expected length of time to progress in quarters)
-        self.application_rate = 1000  # Keep this fixed as input
-        self.approval_rate = 10
-        self.start_rate = 10
-        self.completion_rate = 10
+        self.application_rate = application_rate  # Keep this fixed as input
+        self.approval_rate = approval_rate
+        self.start_rate = start_rate
+        self.completion_rate = completion_rate
         
         # Success rates (percentage that successfully moves to next stage)
-        self.planning_success_rate = 0.9
-        self.approved_to_start_rate = 0.7
-        self.start_to_completion_rate = 0.95
+        self.planning_success_rate = planning_success_rate
+        self.approved_to_start_rate = approved_to_start_rate
+        self.start_to_completion_rate = start_to_completion_rate
         
         # Start processes
         self.env.process(self.application_flow())
@@ -115,7 +116,7 @@ def run_pipeline_simulation(name, simulation_length, init_planning, init_approve
     env = simpy.Environment()
     
     # Create pipeline with custom initial values
-    pipeline = HousingPipeline(env, init_planning, init_approved, init_started, init_completed)
+    pipeline = HousingPipeline(env, init_planning, init_approved, init_started, init_completed, application_rate, approval_rate, start_rate, completion_rate, planning_success_rate, approved_to_start_rate, start_to_completion_rate)
     
     # Lists to store values at each timestep
     quarters = generate_quarter_labels(start_year, start_quarter, simulation_length)

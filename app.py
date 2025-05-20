@@ -8,30 +8,43 @@ from plotly.subplots import make_subplots
 
 class MonitoredContainer(simpy.Container):
     def __init__(self, env, init=0, capacity=float('inf')):
-        super().__init__(env, init, capacity)
-        self.history = []  # List to store (time, level) tuples
-        # Record initial state
-        self.history.append((env.now, init))
+        self.env = env
+        super().__init__(env, capacity=capacity, init=init)
+        # Track inflows and outflows separately with timestamps
+        self.inflows = []  # List of (time, amount) tuples for inflows
+        self.outflows = []  # List of (time, amount) tuples for outflows
+        self.levels = [(env.now, init)]  # List of (time, level) tuples
         
     def get(self, amount):
-        # Record the level before the change
-        self.history.append((self.env.now, self.level))
-        return super().get(amount)
+        # Record the outflow before the change
+        self.outflows.append((self.env.now,amount))
+        # Perform the get operation
+        result = super().get(amount)
+        # Record the new level after the change
+        self.levels.append((self.env.now, self.level))
+        return result
         
     def put(self, amount):
-        # Record the level before the change
-        self.history.append((self.env.now, self.level))
-        return super().put(amount)
+        # Record the inflow before the change
+        self.inflows.append((self.env.now,amount))
+        # Perform the put operation
+        result = super().put(amount)
+        # Record the new level after the change
+        self.levels.append((self.env.now, self.level))
+        return result
     
-    def get_flows(self):
-        """Calculate flows between each recorded state"""
-        flows = []
-        for i in range(1, len(self.history)):
-            time, level = self.history[i]
-            prev_time, prev_level = self.history[i-1]
-            flow = level - prev_level
-            flows.append((time, flow))
-        return flows
+    def get_quarterly_flows(self, quarter):
+        """Get total inflows and outflows for a specific quarter"""
+        # Include flows that occur exactly at start_time but exclude those at end_time
+        return self.inflows[quarter], self.outflows[quarter]
+    
+    def get_level_at_time(self, time):
+        """Get the level at a specific time"""
+        # Find the last recorded level before or at the given time
+        for t, level in reversed(self.levels):
+            if t <= time:
+                return level
+        return self.levels[0][1]  # Return initial level if time is before first record
 
 class HousingPipeline:
     def __init__(self, env, init_planning, init_approved, init_started, application_rate, approval_rate, start_rate, completion_rate, 
@@ -421,318 +434,322 @@ def create_pipeline_parameters(label, col):
         'init_started': init_started
     }
 
-# Streamlit UI
-st.title('Housing Pipeline Simulation Dashboard')
+def main():
+    # Streamlit UI
+    st.title('Housing Pipeline Simulation Dashboard')
 
-# Create tabs for main interface and policy editor
-tab_main, tab_policies = st.tabs(["Main Dashboard", "Policy Editor"])
+    # Create tabs for main interface and policy editor
+    tab_main, tab_policies = st.tabs(["Main Dashboard", "Policy Editor"])
 
-with tab_policies:
-    st.header("Policy Timeline Editor")
-    st.markdown("""
-    Add policies that will change parameters at specific points in time. 
-    Each policy can modify a parameter in one of three ways:
-    - Absolute: Change the parameter by an absolute value (positive or negative)
-    - Multiply: Multiply the parameter by a value
-    """)
-    
-    # Initialize session state for policies if it doesn't exist
-    if 'policies' not in st.session_state:
-        st.session_state.policies = []
-    
-    # Form for adding new policies
-    with st.form("add_policy"):
-        st.subheader("Add New Policy")
+    with tab_policies:
+        st.header("Policy Timeline Editor")
+        st.markdown("""
+        Add policies that will change parameters at specific points in time. 
+        Each policy can modify a parameter in one of three ways:
+        - Absolute: Change the parameter by an absolute value (positive or negative)
+        - Multiply: Multiply the parameter by a value
+        """)
         
-        # First row: Policy name and target type
-        col_name, col_type = st.columns(2)
-        policy_name = col_name.text_input("Policy Name", 
-                                        value="New Policy",
-                                        help="Give your policy a descriptive name")
+        # Initialize session state for policies if it doesn't exist
+        if 'policies' not in st.session_state:
+            st.session_state.policies = []
         
-        target_type = col_type.selectbox("Target Development Type",
-                                       ["All", "Large Private Sites", "Small Private Sites", "Public Sites"],
-                                       help="Select which type of development this policy affects")
-        
-        # Second row: Timing, parameter, and change
-        cols = st.columns(5)
-        
-        # Policy timing
-        policy_year = cols[0].number_input("Year", min_value=2024, max_value=2050, value=2025)
-        policy_quarter = cols[1].selectbox("Quarter", [1, 2, 3, 4], key="new_policy_quarter")
-        
-        # Parameter selection
-        parameter = cols[2].selectbox("Parameter", [
-            ("application_rate", "Number of applications"),
-            ("approval_rate", "Planning Permission Time"),
-            ("start_rate", "Approval to Start Time"),
-            ("completion_rate", "Start to Completion Time"),
-            ("planning_success_rate", "Planning Success Rate"),
-            ("approved_to_start_rate", "Approved to Start Rate"),
-            ("start_to_completion_rate", "Start to Completion Rate")
-        ], format_func=lambda x: x[1])
-        
-        # Store the actual parameter name (first element of tuple)
-        parameter_name = parameter[0]
-        
-        # Change type and value
-        change_type = cols[3].selectbox("Change Type", ["Absolute", "Multiply"])
-        change_value = cols[4].number_input("Change Value", value=0.0)
+        # Form for adding new policies
+        with st.form("add_policy"):
+            st.subheader("Add New Policy")
+            
+            # First row: Policy name and target type
+            col_name, col_type = st.columns(2)
+            policy_name = col_name.text_input("Policy Name", 
+                                            value="New Policy",
+                                            help="Give your policy a descriptive name")
+            
+            target_type = col_type.selectbox("Target Development Type",
+                                           ["All", "Large Private Sites", "Small Private Sites", "Public Sites"],
+                                           help="Select which type of development this policy affects")
+            
+            # Second row: Timing, parameter, and change
+            cols = st.columns(5)
+            
+            # Policy timing
+            policy_year = cols[0].number_input("Year", min_value=2024, max_value=2050, value=2025)
+            policy_quarter = cols[1].selectbox("Quarter", [1, 2, 3, 4], key="new_policy_quarter")
+            
+            # Parameter selection
+            parameter = cols[2].selectbox("Parameter", [
+                ("application_rate", "Number of applications"),
+                ("approval_rate", "Planning Permission Time"),
+                ("start_rate", "Approval to Start Time"),
+                ("completion_rate", "Start to Completion Time"),
+                ("planning_success_rate", "Planning Success Rate"),
+                ("approved_to_start_rate", "Approved to Start Rate"),
+                ("start_to_completion_rate", "Start to Completion Rate")
+            ], format_func=lambda x: x[1])
+            
+            # Store the actual parameter name (first element of tuple)
+            parameter_name = parameter[0]
+            
+            # Change type and value
+            change_type = cols[3].selectbox("Change Type", ["Absolute", "Multiply"])
+            change_value = cols[4].number_input("Change Value", value=0.0)
 
-        # Submit button
-        if st.form_submit_button("Add Policy"):
-            new_policy = {
-                'name': policy_name,
-                'target_type': target_type,
-                'year': policy_year,
-                'quarter': policy_quarter,
-                'parameter': parameter_name,  # Use the actual parameter name
-                'change_type': change_type,
-                'change_value': change_value,
-                'display_value': change_value  # Store original input value for display
-            }
-            st.session_state.policies.append(new_policy)
-            st.success("Policy added!")
-    
-    # Display and manage existing policies
-    st.subheader("Existing Policies")
-    if not st.session_state.policies:
-        st.info("No policies added yet.")
-    else:
-        # Sort policies by year and quarter
-        sorted_policies = sorted(
-            enumerate(st.session_state.policies),
-            key=lambda x: (x[1]['year'], x[1]['quarter'])
-        )
+            # Submit button
+            if st.form_submit_button("Add Policy"):
+                new_policy = {
+                    'name': policy_name,
+                    'target_type': target_type,
+                    'year': policy_year,
+                    'quarter': policy_quarter,
+                    'parameter': parameter_name,  # Use the actual parameter name
+                    'change_type': change_type,
+                    'change_value': change_value,
+                    'display_value': change_value  # Store original input value for display
+                }
+                st.session_state.policies.append(new_policy)
+                st.success("Policy added!")
         
-        for i, (orig_idx, policy) in enumerate(sorted_policies):
-            cols = st.columns([1, 4, 1])
-            with cols[1]:
-                # Format the change value based on parameter type
-                if policy['parameter'] in ['approval_rate', 'start_rate', 'completion_rate']:
-                    if policy['change_type'] == "Absolute":
-                        value_display = f"{policy['display_value']} quarters"
+        # Display and manage existing policies
+        st.subheader("Existing Policies")
+        if not st.session_state.policies:
+            st.info("No policies added yet.")
+        else:
+            # Sort policies by year and quarter
+            sorted_policies = sorted(
+                enumerate(st.session_state.policies),
+                key=lambda x: (x[1]['year'], x[1]['quarter'])
+            )
+            
+            for i, (orig_idx, policy) in enumerate(sorted_policies):
+                cols = st.columns([1, 4, 1])
+                with cols[1]:
+                    # Format the change value based on parameter type
+                    if policy['parameter'] in ['approval_rate', 'start_rate', 'completion_rate']:
+                        if policy['change_type'] == "Absolute":
+                            value_display = f"{policy['display_value']} quarters"
+                        else:
+                            value_display = f"{policy['display_value']}{'%' if policy['change_type'] == 'Percentage' else 'x'}"
                     else:
-                        value_display = f"{policy['display_value']}{'%' if policy['change_type'] == 'Percentage' else 'x'}"
-                else:
-                    value_display = f"{policy['display_value']}{'%' if policy['change_type'] == 'Percentage' else ''}"
+                        value_display = f"{policy['display_value']}{'%' if policy['change_type'] == 'Percentage' else ''}"
+                    
+                    st.markdown(f"""
+                    **{policy['name']}** (Policy {i+1})
+                    - **When:** {policy['year']} Q{policy['quarter']}
+                    - **Target:** {policy['target_type']}
+                    - **Change:** {policy['change_type'].lower()} change to {policy['parameter']}: 
+                      {value_display}
+                    """)
+                with cols[2]:
+                    if st.button(f"Delete Policy {i+1}"):
+                        st.session_state.policies.pop(orig_idx)
+                        st.rerun()
+        
+        if st.button("Clear All Policies"):
+            st.session_state.policies = []
+            st.rerun()
+
+    with tab_main:
+        # Sidebar for parameters
+        st.sidebar.header('Simulation Parameters')
+        
+        # Simulation timing
+        st.sidebar.subheader('Simulation Timing')
+        start_year = st.sidebar.number_input('Start Year', value=2024, min_value=2024, max_value=2050)
+        start_quarter = st.sidebar.selectbox('Start Quarter', [1, 2, 3, 4], index=1)
+        simulation_length = st.sidebar.number_input('Simulation Length (quarters)', value=20, min_value=1, max_value=100)
+        
+        # Create three columns for pipeline parameters
+        col1, col2, col3 = st.columns(3)
+        
+        # Get parameters for each pipeline
+        large_private_params = create_pipeline_parameters("Large Private Sites", col1)
+        small_private_params = create_pipeline_parameters("Small Private Sites", col2)
+        public_params = create_pipeline_parameters("Public Sites", col3)
+
+        if st.button('Run Simulation'):
+            # Run simulations for each pipeline type
+            pipeline_results = {}
+            for name, params in [
+                ("Large Private Sites", large_private_params),
+                ("Small Private Sites", small_private_params),
+                ("Public Sites", public_params)
+            ]:
+                # Convert times to rates
+                approval_rate = 1.0 / params['planning_time']
+                start_rate = 1.0 / params['start_time']
+                completion_rate = 1.0 / params['completion_time']
                 
-                st.markdown(f"""
-                **{policy['name']}** (Policy {i+1})
-                - **When:** {policy['year']} Q{policy['quarter']}
-                - **Target:** {policy['target_type']}
-                - **Change:** {policy['change_type'].lower()} change to {policy['parameter']}: 
-                  {value_display}
-                """)
-            with cols[2]:
-                if st.button(f"Delete Policy {i+1}"):
-                    st.session_state.policies.pop(orig_idx)
-                    st.rerun()
-    
-    if st.button("Clear All Policies"):
-        st.session_state.policies = []
-        st.rerun()
-
-with tab_main:
-    # Sidebar for parameters
-    st.sidebar.header('Simulation Parameters')
-    
-    # Simulation timing
-    st.sidebar.subheader('Simulation Timing')
-    start_year = st.sidebar.number_input('Start Year', value=2024, min_value=2024, max_value=2050)
-    start_quarter = st.sidebar.selectbox('Start Quarter', [1, 2, 3, 4], index=1)
-    simulation_length = st.sidebar.number_input('Simulation Length (quarters)', value=20, min_value=1, max_value=100)
-    
-    # Create three columns for pipeline parameters
-    col1, col2, col3 = st.columns(3)
-    
-    # Get parameters for each pipeline
-    large_private_params = create_pipeline_parameters("Large Private Sites", col1)
-    small_private_params = create_pipeline_parameters("Small Private Sites", col2)
-    public_params = create_pipeline_parameters("Public Sites", col3)
-
-    if st.button('Run Simulation'):
-        # Run simulations for each pipeline type
-        pipeline_results = {}
-        for name, params in [
-            ("Large Private Sites", large_private_params),
-            ("Small Private Sites", small_private_params),
-            ("Public Sites", public_params)
-        ]:
-            # Convert times to rates
-            approval_rate = 1.0 / params['planning_time']
-            start_rate = 1.0 / params['start_time']
-            completion_rate = 1.0 / params['completion_time']
+                # Run simulation with policies
+                results = run_pipeline_simulation(
+                    name=name,
+                    simulation_length=simulation_length,
+                    init_planning=params['init_planning'],
+                    init_approved=params['init_approved'],
+                    init_started=params['init_started'],
+                    init_completed=0,
+                    application_rate=params['application_rate'],
+                    approval_rate=approval_rate,
+                    start_rate=start_rate,
+                    completion_rate=completion_rate,
+                    planning_success_rate=params['planning_success_rate'],
+                    approved_to_start_rate=params['approved_to_start_rate'],
+                    start_to_completion_rate=params['start_to_completion_rate'],
+                    start_year=start_year,
+                    start_quarter=start_quarter,
+                    policies=[
+                        {**p, 'target_type': p.get('target_type', 'All')}  # Ensure backward compatibility
+                        for p in st.session_state.policies
+                    ]  # Add policies to simulation
+                )
+                pipeline_results[name] = results
             
-            # Run simulation with policies
-            results = run_pipeline_simulation(
-                name=name,
-                simulation_length=simulation_length,
-                init_planning=params['init_planning'],
-                init_approved=params['init_approved'],
-                init_started=params['init_started'],
-                init_completed=0,
-                application_rate=params['application_rate'],
-                approval_rate=approval_rate,
-                start_rate=start_rate,
-                completion_rate=completion_rate,
-                planning_success_rate=params['planning_success_rate'],
-                approved_to_start_rate=params['approved_to_start_rate'],
-                start_to_completion_rate=params['start_to_completion_rate'],
-                start_year=start_year,
-                start_quarter=start_quarter,
-                policies=[
-                    {**p, 'target_type': p.get('target_type', 'All')}  # Ensure backward compatibility
-                    for p in st.session_state.policies
-                ]  # Add policies to simulation
-            )
-            pipeline_results[name] = results
-        
-        # Create combined results
-        combined_results = pipeline_results["Large Private Sites"].copy()
-        for col in ['Applications', 'Approvals', 'Starts', 'Completions']:
-            combined_results[col] = (
-                pipeline_results["Large Private Sites"][col] +
-                pipeline_results["Small Private Sites"][col] +
-                pipeline_results["Public Sites"][col]
-            )
-        
-        # Create tabs for different views
-        tab_all, tab_large, tab_small, tab_public = st.tabs([
-            "All Sites Combined",
-            "Large Private Sites",
-            "Small Private Sites",
-            "Public Sites"
-        ])
-        
-        def create_plots(results, title_prefix=""):
-            fig = make_subplots(
-                rows=4, cols=1,
-                subplot_titles=(
-                    f'{title_prefix}Quarterly Flow Rates',
-                    f'{title_prefix}Annual Totals',
-                    f'{title_prefix}Stock Evolution'
-                ),
-                vertical_spacing=0.1,
-                row_heights=[0.3, 0.3, 0.4, 0.4]
-            )
-            
-            # Flow rates over time (Quarterly)
-            for name, color in [
-                ('Applications', 'blue'),
-                ('Approvals', 'green'),
-                ('Starts', 'orange'),
-                ('Completions', 'red')
-            ]:
-                fig.add_trace(
-                    go.Scatter(
-                        x=results['Quarter'],
-                        y=results[name],
-                        name=name,
-                        line=dict(color=color)
-                    ),
-                    row=1, col=1
+            # Create combined results
+            combined_results = pipeline_results["Large Private Sites"].copy()
+            for col in ['Applications', 'Approvals', 'Starts', 'Completions']:
+                combined_results[col] = (
+                    pipeline_results["Large Private Sites"][col] +
+                    pipeline_results["Small Private Sites"][col] +
+                    pipeline_results["Public Sites"][col]
                 )
             
-            # Calculate annual totals
-            results['Year'] = [q.split()[0] for q in results['Quarter']]
-            annual_totals = results.groupby('Year').sum()
+            # Create tabs for different views
+            tab_all, tab_large, tab_small, tab_public = st.tabs([
+                "All Sites Combined",
+                "Large Private Sites",
+                "Small Private Sites",
+                "Public Sites"
+            ])
             
-            # Annual totals line chart
-            for name, color in [
-                ('Applications', 'blue'),
-                ('Approvals', 'green'),
-                ('Starts', 'orange'),
-                ('Completions', 'red')
-            ]:
-                fig.add_trace(
-                    go.Scatter(
-                        x=annual_totals.index,
-                        y=annual_totals[name],
-                        name=f'{name} (Annual)',
-                        line=dict(color=color),
-                        showlegend=False
+            def create_plots(results, title_prefix=""):
+                fig = make_subplots(
+                    rows=4, cols=1,
+                    subplot_titles=(
+                        f'{title_prefix}Quarterly Flow Rates',
+                        f'{title_prefix}Annual Totals',
+                        f'{title_prefix}Stock Evolution'
                     ),
-                    row=2, col=1
+                    vertical_spacing=0.1,
+                    row_heights=[0.3, 0.3, 0.4, 0.4]
                 )
-            
-            # Stock evolution
-            for name, color in [
-                ('Planning Stock', 'blue'),
-                ('Approved Stock', 'green'),
-                ('Started Stock', 'orange'),
-                ('Completed Stock', 'red')
-            ]:
-                fig.add_trace(
-                    go.Scatter(
-                        x=results['Quarter'],
-                        y=results[name],
-                        name=f'{name}',
-                        line=dict(color=color)
-                    ),
-                    row=3, col=1
-                )
+                
+                # Flow rates over time (Quarterly)
+                for name, color in [
+                    ('Applications', 'blue'),
+                    ('Approvals', 'green'),
+                    ('Starts', 'orange'),
+                    ('Completions', 'red')
+                ]:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=results['Quarter'],
+                            y=results[name],
+                            name=name,
+                            line=dict(color=color)
+                        ),
+                        row=1, col=1
+                    )
+                
+                # Calculate annual totals
+                results['Year'] = [q.split()[0] for q in results['Quarter']]
+                annual_totals = results.groupby('Year').sum()
+                
+                # Annual totals line chart
+                for name, color in [
+                    ('Applications', 'blue'),
+                    ('Approvals', 'green'),
+                    ('Starts', 'orange'),
+                    ('Completions', 'red')
+                ]:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=annual_totals.index,
+                            y=annual_totals[name],
+                            name=f'{name} (Annual)',
+                            line=dict(color=color),
+                            showlegend=False
+                        ),
+                        row=2, col=1
+                    )
+                
+                # Stock evolution
+                for name, color in [
+                    ('Planning Stock', 'blue'),
+                    ('Approved Stock', 'green'),
+                    ('Started Stock', 'orange'),
+                    ('Completed Stock', 'red')
+                ]:
+                    fig.add_trace(
+                        go.Scatter(
+                            x=results['Quarter'],
+                            y=results[name],
+                            name=f'{name}',
+                            line=dict(color=color)
+                        ),
+                        row=3, col=1
+                    )
 
-            # Update layout
-            fig.update_layout(height=1500, showlegend=True, barmode='group')
+                # Update layout
+                fig.update_layout(height=1500, showlegend=True, barmode='group')
+                
+                # Update axes labels
+                fig.update_xaxes(title_text='Quarter', row=1, col=1)
+                fig.update_xaxes(title_text='Year', row=2, col=1)
+                fig.update_xaxes(title_text='Quarter', row=3, col=1)
+                
+                fig.update_yaxes(title_text='Number of Units per Quarter', row=1, col=1)
+                fig.update_yaxes(title_text='Number of Units per Year', row=2, col=1)
+                fig.update_yaxes(title_text='Total Units in Stock', row=3, col=1)
+                
+                # Rotate x-axis labels
+                fig.update_xaxes(tickangle=45, row=1, col=1)
+                fig.update_xaxes(tickangle=45, row=3, col=1)
+                
+                return fig, annual_totals
             
-            # Update axes labels
-            fig.update_xaxes(title_text='Quarter', row=1, col=1)
-            fig.update_xaxes(title_text='Year', row=2, col=1)
-            fig.update_xaxes(title_text='Quarter', row=3, col=1)
+            # Display plots and data in tabs
+            with tab_all:
+                st.subheader('Combined Results (All Sites)')
+                fig, annual_totals = create_plots(combined_results)
+                st.plotly_chart(fig, use_container_width=True)
+                st.subheader('Quarterly Data')
+                st.dataframe(combined_results)
+                st.subheader('Annual Totals')
+                st.dataframe(annual_totals)
             
-            fig.update_yaxes(title_text='Number of Units per Quarter', row=1, col=1)
-            fig.update_yaxes(title_text='Number of Units per Year', row=2, col=1)
-            fig.update_yaxes(title_text='Total Units in Stock', row=3, col=1)
+            with tab_large:
+                st.subheader('Large Private Sites Results')
+                fig, annual_totals = create_plots(
+                    pipeline_results["Large Private Sites"],
+                    "Large Private Sites - "
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                st.subheader('Quarterly Data')
+                st.dataframe(pipeline_results["Large Private Sites"])
+                st.subheader('Annual Totals')
+                st.dataframe(annual_totals)
             
-            # Rotate x-axis labels
-            fig.update_xaxes(tickangle=45, row=1, col=1)
-            fig.update_xaxes(tickangle=45, row=3, col=1)
+            with tab_small:
+                st.subheader('Small Private Sites Results')
+                fig, annual_totals = create_plots(
+                    pipeline_results["Small Private Sites"],
+                    "Small Private Sites - "
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                st.subheader('Quarterly Data')
+                st.dataframe(pipeline_results["Small Private Sites"])
+                st.subheader('Annual Totals')
+                st.dataframe(annual_totals)
             
-            return fig, annual_totals
-        
-        # Display plots and data in tabs
-        with tab_all:
-            st.subheader('Combined Results (All Sites)')
-            fig, annual_totals = create_plots(combined_results)
-            st.plotly_chart(fig, use_container_width=True)
-            st.subheader('Quarterly Data')
-            st.dataframe(combined_results)
-            st.subheader('Annual Totals')
-            st.dataframe(annual_totals)
-        
-        with tab_large:
-            st.subheader('Large Private Sites Results')
-            fig, annual_totals = create_plots(
-                pipeline_results["Large Private Sites"],
-                "Large Private Sites - "
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            st.subheader('Quarterly Data')
-            st.dataframe(pipeline_results["Large Private Sites"])
-            st.subheader('Annual Totals')
-            st.dataframe(annual_totals)
-        
-        with tab_small:
-            st.subheader('Small Private Sites Results')
-            fig, annual_totals = create_plots(
-                pipeline_results["Small Private Sites"],
-                "Small Private Sites - "
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            st.subheader('Quarterly Data')
-            st.dataframe(pipeline_results["Small Private Sites"])
-            st.subheader('Annual Totals')
-            st.dataframe(annual_totals)
-        
-        with tab_public:
-            st.subheader('Public Sites Results')
-            fig, annual_totals = create_plots(
-                pipeline_results["Public Sites"],
-                "Public Sites - "
-            )
-            st.plotly_chart(fig, use_container_width=True)
-            st.subheader('Quarterly Data')
-            st.dataframe(pipeline_results["Public Sites"])
-            st.subheader('Annual Totals')
-            st.dataframe(annual_totals)
+            with tab_public:
+                st.subheader('Public Sites Results')
+                fig, annual_totals = create_plots(
+                    pipeline_results["Public Sites"],
+                    "Public Sites - "
+                )
+                st.plotly_chart(fig, use_container_width=True)
+                st.subheader('Quarterly Data')
+                st.dataframe(pipeline_results["Public Sites"])
+                st.subheader('Annual Totals')
+                st.dataframe(annual_totals)
+
+if __name__ == "__main__":
+    main()

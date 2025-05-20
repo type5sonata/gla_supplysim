@@ -78,10 +78,16 @@ class HousingPipeline:
     
     def approval_flow(self):
         while True:
-            amount = self.in_planning.level * 1/self.approval_rate # Convert time to rate
+            amount = self.in_planning.level * 1/self.approval_rate
             successful_amount = amount * self.planning_success_rate
+            print(f"\nApproval Flow at time {self.env.now}:")
+            print(f"  Current planning level: {self.in_planning.level}")
+            print(f"  Attempting to get {amount} from planning")
+            print(f"  Will put {successful_amount} into approved")
             yield self.in_planning.get(amount)
             yield self.approved_not_started.put(successful_amount)
+            print(f"  After flow - planning level: {self.in_planning.level}")
+            print(f"  After flow - approved level: {self.approved_not_started.level}")
             yield self.env.timeout(1)
     
     def start_flow(self):
@@ -203,44 +209,38 @@ def run_pipeline_simulation(name, simulation_length, init_planning, init_approve
         # Run simulation for one quarter
         env.run(until=quarter_idx + 1)
         
-        # Calculate flows (quarterly changes)
-        applications.append(pipeline.application_rate)  # This is already a flow
+        # Append flows to lists.
         
-        # Calculate successful approvals
-        approval_amount = prev_planning * 1/pipeline.approval_rate
-        successful_approvals = approval_amount * pipeline.planning_success_rate
-        approvals.append(successful_approvals)
         
-        # Calculate successful starts
-        start_amount = prev_approved * 1/pipeline.start_rate
-        successful_starts = start_amount * pipeline.approved_to_start_rate
-        starts.append(successful_starts)
-        
-        # Calculate successful completions
-        completion_amount = prev_started * 1/pipeline.completion_rate
-        successful_completions = completion_amount * pipeline.start_to_completion_rate
-        completions.append(successful_completions)
-        
-        # Update previous values
-        prev_planning = pipeline.in_planning.level
-        prev_approved = pipeline.approved_not_started.level
-        prev_started = pipeline.started.level
-        prev_completed = pipeline.completed.level
-        
-        # Store stock values
-        planning_stock.append(prev_planning)
-        approved_stock.append(prev_approved)
-        started_stock.append(prev_started)
-        completed_stock.append(prev_completed)
+        # Append end-of-quarter levels to lists.
+        planning_stock.append(pipeline.in_planning.level)
+        approved_stock.append(pipeline.approved_not_started.level)
+        started_stock.append(pipeline.started.level)
+        completed_stock.append(pipeline.completed.level)
     
+    # Add this right before the DataFrame creation
+    print("\n=== Debug Information ===")
+    print(f"Number of quarters: {len(quarters)}")
+    print("\nList lengths:")
+    print(f"quarters: {len(quarters)}")
+    print(f"planning_stock: {len(planning_stock[:-1])}")
+    print(f"approved_stock: {len(approved_stock[:-1])}")
+    print(f"started_stock: {len(started_stock[:-1])}")
+    print(f"completed_stock: {len(completed_stock[:-1])}")
+    print("\nFlow records:")
+    print(f"in_planning.inflows: {len(pipeline.in_planning.inflows)}")
+    print(f"approved_not_started.inflows: {len(pipeline.approved_not_started.inflows)}")
+    print(f"started.inflows: {len(pipeline.started.inflows)}")
+    print(f"completed.inflows: {len(pipeline.completed.inflows)}")
+
     # Create DataFrame with results
     results = pd.DataFrame({
         'Quarter': quarters,
-        'Applications': applications,
-        'Approvals': approvals,
-        'Starts': starts,
-        'Completions': completions,
-        'Planning Stock': planning_stock[:-1],  # Exclude last value as it's one step ahead
+        'Applications': pipeline.in_planning.inflows, # Subsitute historical value for first quarter
+        'Approvals': pipeline.approved_not_started.inflows,
+        'Starts': pipeline.started.inflows,
+        'Completions': pipeline.completed.inflows,
+        'Planning Stock': planning_stock[:-1],
         'Approved Stock': approved_stock[:-1],
         'Started Stock': started_stock[:-1],
         'Completed Stock': completed_stock[:-1]
@@ -571,11 +571,7 @@ def main():
                 ("Small Private Sites", small_private_params),
                 ("Public Sites", public_params)
             ]:
-                # Convert times to rates
-                approval_rate = 1.0 / params['planning_time']
-                start_rate = 1.0 / params['start_time']
-                completion_rate = 1.0 / params['completion_time']
-                
+               
                 # Run simulation with policies
                 results = run_pipeline_simulation(
                     name=name,
@@ -585,9 +581,9 @@ def main():
                     init_started=params['init_started'],
                     init_completed=0,
                     application_rate=params['application_rate'],
-                    approval_rate=approval_rate,
-                    start_rate=start_rate,
-                    completion_rate=completion_rate,
+                    approval_rate=params['planning_time'],
+                    start_rate=params['start_time'],
+                    completion_rate=params['completion_time'],
                     planning_success_rate=params['planning_success_rate'],
                     approved_to_start_rate=params['approved_to_start_rate'],
                     start_to_completion_rate=params['start_to_completion_rate'],

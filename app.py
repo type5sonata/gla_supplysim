@@ -6,6 +6,33 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+class MonitoredContainer(simpy.Container):
+    def __init__(self, env, init=0, capacity=float('inf')):
+        super().__init__(env, init, capacity)
+        self.history = []  # List to store (time, level) tuples
+        # Record initial state
+        self.history.append((env.now, init))
+        
+    def get(self, amount):
+        # Record the level before the change
+        self.history.append((self.env.now, self.level))
+        return super().get(amount)
+        
+    def put(self, amount):
+        # Record the level before the change
+        self.history.append((self.env.now, self.level))
+        return super().put(amount)
+    
+    def get_flows(self):
+        """Calculate flows between each recorded state"""
+        flows = []
+        for i in range(1, len(self.history)):
+            time, level = self.history[i]
+            prev_time, prev_level = self.history[i-1]
+            flow = level - prev_level
+            flows.append((time, flow))
+        return flows
+
 class HousingPipeline:
     def __init__(self, env, init_planning, init_approved, init_started, application_rate, approval_rate, start_rate, completion_rate, 
                  planning_success_rate, approved_to_start_rate, start_to_completion_rate, init_completed=0):

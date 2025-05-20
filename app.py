@@ -17,7 +17,7 @@ class MonitoredContainer(simpy.Container):
         
     def get(self, amount):
         # Record the outflow before the change
-        self.outflows.append((self.env.now,amount))
+        self.outflows.append(amount)
         # Perform the get operation
         result = super().get(amount)
         # Record the new level after the change
@@ -26,7 +26,7 @@ class MonitoredContainer(simpy.Container):
         
     def put(self, amount):
         # Record the inflow before the change
-        self.inflows.append((self.env.now,amount))
+        self.inflows.append(amount)
         # Perform the put operation
         result = super().put(amount)
         # Record the new level after the change
@@ -36,15 +36,11 @@ class MonitoredContainer(simpy.Container):
     def get_quarterly_flows(self, quarter):
         """Get total inflows and outflows for a specific quarter"""
         # Include flows that occur exactly at start_time but exclude those at end_time
-        return self.inflows[quarter], self.outflows[quarter]
+        return self.inflows[quarter-1], self.outflows[quarter-1]
     
-    def get_level_at_time(self, time):
-        """Get the level at a specific time"""
-        # Find the last recorded level before or at the given time
-        for t, level in reversed(self.levels):
-            if t <= time:
-                return level
-        return self.levels[0][1]  # Return initial level if time is before first record
+    def get_quarterly_level(self, quarter):
+        """Get the level at a specific quarter"""
+        return self.levels[quarter-1][1]  # Return initial level if time is before first record
 
 class HousingPipeline:
     def __init__(self, env, init_planning, init_approved, init_started, application_rate, approval_rate, start_rate, completion_rate, 

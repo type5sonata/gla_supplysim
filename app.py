@@ -213,19 +213,19 @@ def run_pipeline_simulation(name, simulation_length, init_planning, init_approve
         completed_stock.append(pipeline.completed.level)
     
     # Add this right before the DataFrame creation
-    print("\n=== Debug Information ===")
-    print(f"Number of quarters: {len(quarters)}")
-    print("\nList lengths:")
-    print(f"quarters: {len(quarters)}")
-    print(f"planning_stock: {len(planning_stock[:-1])}")
-    print(f"approved_stock: {len(approved_stock[:-1])}")
-    print(f"started_stock: {len(started_stock[:-1])}")
-    print(f"completed_stock: {len(completed_stock[:-1])}")
-    print("\nFlow records:")
-    print(f"in_planning.inflows: {len(pipeline.in_planning.inflows)}")
-    print(f"approved_not_started.inflows: {len(pipeline.approved_not_started.inflows)}")
-    print(f"started.inflows: {len(pipeline.started.inflows)}")
-    print(f"completed.inflows: {len(pipeline.completed.inflows)}")
+    # print("\n=== Debug Information ===")
+    # print(f"Number of quarters: {len(quarters)}")
+    # print("\nList lengths:")
+    # print(f"quarters: {len(quarters)}")
+    # print(f"planning_stock: {len(planning_stock[:-1])}")
+    # print(f"approved_stock: {len(approved_stock[:-1])}")
+    # print(f"started_stock: {len(started_stock[:-1])}")
+    # print(f"completed_stock: {len(completed_stock[:-1])}")
+    # print("\nFlow records:")
+    # print(f"in_planning.inflows: {len(pipeline.in_planning.inflows)}")
+    # print(f"approved_not_started.inflows: {len(pipeline.approved_not_started.inflows)}")
+    # print(f"started.inflows: {len(pipeline.started.inflows)}")
+    # print(f"completed.inflows: {len(pipeline.completed.inflows)}")
 
     # Create DataFrame with results
     results = pd.DataFrame({
@@ -239,6 +239,9 @@ def run_pipeline_simulation(name, simulation_length, init_planning, init_approve
         'Started Stock': started_stock[:-1],
         'Completed Stock': completed_stock[:-1]
     })
+    # Convert all numeric columns to integers
+    numeric_columns = results.select_dtypes(include=['float64', 'float32', 'int64', 'int32']).columns
+    results[numeric_columns] = results[numeric_columns].astype(int)
     
     return results
 
@@ -400,17 +403,17 @@ def create_pipeline_parameters(label, col):
         # Initial stock values
         col.subheader(f'{label} Initial Stock Parameters')
         init_planning = col.number_input(f'In planning ({label})', 
-                                    value=59743,
+                                    value=11560,
                                     step=1000,
                                     key=f'init_plan_{label}')
         
         init_approved = col.number_input(f'Approved not started ({label})', 
-                                    value=53769,
+                                    value=11445,
                                     step=1000,
                                     key=f'init_app_{label}')
         
         init_started = col.number_input(f'Started ({label})', 
-                                    value=152570,
+                                    value=32475,
                                     step=1000,
                                     key=f'init_start_{label}')
     return {
@@ -593,7 +596,7 @@ def main():
             
             # Create combined results
             combined_results = pipeline_results["Large Private Sites"].copy()
-            for col in ['Applications', 'Approvals', 'Starts', 'Completions']:
+            for col in ['Applications', 'Approvals', 'Starts', 'Completions', 'Planning Stock', 'Approved Stock', 'Started Stock', 'Completed Stock']:
                 combined_results[col] = (
                     pipeline_results["Large Private Sites"][col] +
                     pipeline_results["Small Private Sites"][col] +
@@ -650,6 +653,8 @@ def main():
                 # Calculate annual totals
                 results['Year'] = [q.split()[0] for q in results['Quarter']]
                 annual_totals = results.groupby('Year').sum()
+                # Drop the Quarter column from annual totals since it's not meaningful
+                annual_totals = annual_totals.drop('Quarter', axis=1, errors='ignore')
                 
                 # Annual totals line chart
                 for name, color in [

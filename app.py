@@ -429,7 +429,7 @@ def create_pipeline_parameters(label, col):
 def main():
    
     # Streamlit UI
-    st.title('Housing Pipeline Simulation Dashboard')
+    st.title('Housing Pipeline Simulation Dashboard 1.0')
 
     # Create tabs for main interface and policy editor
     tab_main, tab_policies = st.tabs(["Main Dashboard", "Policy Editor"])
@@ -484,7 +484,7 @@ def main():
             
             # Change type and value
             change_type = cols[3].selectbox("Change Type", ["Absolute", "Multiply"])
-            change_value = cols[4].number_input("Change Value", value=0.0)
+            change_value = cols[4].number_input("Change Value", value=0.0, step=0.1)
 
             # Submit button
             if st.form_submit_button("Add Policy"):

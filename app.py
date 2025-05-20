@@ -49,10 +49,10 @@ class HousingPipeline:
                  planning_success_rate, approved_to_start_rate, start_to_completion_rate, init_completed=0):
         self.env = env
         # Containers for each stage and initial amounts
-        self.in_planning = simpy.Container(env, init=init_planning)
-        self.approved_not_started = simpy.Container(env, init=init_approved)
-        self.started = simpy.Container(env, init=init_started)
-        self.completed = simpy.Container(env, init=init_completed)
+        self.in_planning = MonitoredContainer(env, init=init_planning)
+        self.approved_not_started = MonitoredContainer(env, init=init_approved)
+        self.started = MonitoredContainer(env, init=init_started)
+        self.completed = MonitoredContainer(env, init=init_completed)
         
         # Flow rates (application rate -- absolute value, or: expected length of time to progress in quarters)
         self.application_rate = application_rate  # Keep this fixed as input

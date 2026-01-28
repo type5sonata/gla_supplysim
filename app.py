@@ -6,6 +6,46 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
+# Default thread configurations
+DEFAULT_THREADS = {
+    "Large Private Sites": {
+        "application_rate": 6455,
+        "planning_time": 9.3,
+        "start_time": 9.4,
+        "completion_time": 28.3,
+        "planning_success_rate": 0.9,
+        "approved_to_start_rate": 0.7,
+        "start_to_completion_rate": 0.9,
+        "init_planning": 59743,
+        "init_approved": 53769,
+        "init_started": 152570
+    },
+    "Small Private Sites": {
+        "application_rate": 1760,
+        "planning_time": 9.3,
+        "start_time": 10.8,
+        "completion_time": 24.9,
+        "planning_success_rate": 0.9,
+        "approved_to_start_rate": 0.7,
+        "start_to_completion_rate": 0.9,
+        "init_planning": 16427,
+        "init_approved": 14785,
+        "init_started": 41964
+    },
+    "Public Sites": {
+        "application_rate": 1289,
+        "planning_time": 9.3,
+        "start_time": 15.5,
+        "completion_time": 25.6,
+        "planning_success_rate": 0.99,
+        "approved_to_start_rate": 0.99,
+        "start_to_completion_rate": 0.9,
+        "init_planning": 11560,
+        "init_approved": 11445,
+        "init_started": 32475
+    }
+}
+
 class MonitoredContainer(simpy.Container):
     def __init__(self, env, init=0, capacity=float('inf')):
         self.env = env
@@ -245,177 +285,65 @@ def run_pipeline_simulation(name, simulation_length, init_planning, init_approve
     
     return results
 
-def create_pipeline_parameters(label, col):
+def create_pipeline_parameters(label, col, defaults):
     col.subheader(f'{label} Parameters')
-    
-    if label == "Large Private Sites":
-        # Flow times
-        application_rate = col.number_input(f'New Applications per Quarter ({label})', 
-                                        value=6455, 
-                                        step=100, key=f'app_rate_{label}')
-        
-        planning_time = col.number_input(f'Average Time to Get Planning Permission ({label})', 
-                                    value=9.3, 
-                                    min_value=1.0, step=0.1, 
-                                    help='Average number of quarters it takes to get planning permission',
-                                    key=f'plan_time_{label}')
-        
-        start_time = col.number_input(f'Average Time from Approval to Start ({label})', 
-                                    value=9.4, 
+
+    # Flow times
+    application_rate = col.number_input(f'New Applications per Quarter ({label})',
+                                    value=defaults['application_rate'],
+                                    step=100, key=f'app_rate_{label}')
+
+    planning_time = col.number_input(f'Average Time to Get Planning Permission ({label})',
+                                value=defaults['planning_time'],
+                                min_value=1.0, step=0.1,
+                                help='Average number of quarters it takes to get planning permission',
+                                key=f'plan_time_{label}')
+
+    start_time = col.number_input(f'Average Time from Approval to Start ({label})',
+                                value=defaults['start_time'],
+                                min_value=1.0, step=0.1,
+                                help='Average number of quarters between approval and construction start',
+                                key=f'start_time_{label}')
+
+    completion_time = col.number_input(f'Average Time from Start to Completion ({label})',
+                                    value=defaults['completion_time'],
                                     min_value=1.0, step=0.1,
-                                    help='Average number of quarters between approval and construction start',
-                                    key=f'start_time_{label}')
-        
-        completion_time = col.number_input(f'Average Time from Start to Completion ({label})', 
-                                        value=28.3, 
-                                        min_value=1.0, step=0.1,
-                                        help='Average number of quarters from construction start to completion',
-                                        key=f'comp_time_{label}')
-        
-        # Success rates
-        planning_success_rate = col.slider(f'Planning Success Rate ({label})', 
-                                        0.0, 1.0, 0.9,
-                                        help='Proportion of planning applications that are successful',
-                                        key=f'plan_success_{label}')
-        
-        approved_to_start_rate = col.slider(f'Approved to Start Rate ({label})', 
-                                        0.0, 1.0, 0.7,
-                                        help='Proportion of approved developments that successfully start construction',
-                                        key=f'app_start_{label}')
-        
-        start_to_completion_rate = col.slider(f'Start to Completion Rate ({label})', 
-                                            0.0, 1.0, 0.9,
-                                            help='Proportion of started constructions that successfully complete',
-                                            key=f'start_comp_{label}')
-        
-        # Initial stock values
-        col.subheader(f'{label} Initial Stock Parameters')
-        init_planning = col.number_input(f'In planning ({label})', 
-                                    value=59743,
-                                    step=1000,
-                                    key=f'init_plan_{label}')
-        
-        init_approved = col.number_input(f'Approved not started ({label})', 
-                                    value=53769,
-                                    step=1000,
-                                    key=f'init_app_{label}')
-        
-        init_started = col.number_input(f'Started ({label})', 
-                                    value=152570,
-                                    step=1000,
-                                    key=f'init_start_{label}')
-    elif label == "Small Private Sites":
-        # Flow times
-        application_rate = col.number_input(f'New Applications per Quarter ({label})', 
-                                        value=1760, 
-                                        step=100, key=f'app_rate_{label}')
-        
-        planning_time = col.number_input(f'Average Time to Get Planning Permission ({label})', 
-                                    value=9.3,
-                                    min_value=1.0, step=0.1, 
-                                    help='Average number of quarters it takes to get planning permission',
-                                    key=f'plan_time_{label}')
-        
-        start_time = col.number_input(f'Average Time from Approval to Start ({label})', 
-                                    value=10.8, 
-                                    min_value=1.0, step=0.1,
-                                    help='Average number of quarters between approval and construction start',
-                                    key=f'start_time_{label}')
-        
-        completion_time = col.number_input(f'Average Time from Start to Completion ({label})', 
-                                        value=24.9, 
-                                        min_value=1.0, step=0.1,
-                                        help='Average number of quarters from construction start to completion',
-                                        key=f'comp_time_{label}')
-        
-        # Success rates
-        planning_success_rate = col.slider(f'Planning Success Rate ({label})', 
-                                        0.0, 1.0, 0.9,
-                                        help='Proportion of planning applications that are successful',
-                                        key=f'plan_success_{label}')
-        
-        approved_to_start_rate = col.slider(f'Approved to Start Rate ({label})', 
-                                        0.0, 1.0, 0.7,
-                                        help='Proportion of approved developments that successfully start construction',
-                                        key=f'app_start_{label}')
-        
-        start_to_completion_rate = col.slider(f'Start to Completion Rate ({label})', 
-                                            0.0, 1.0, 0.9,
-                                            help='Proportion of started constructions that successfully complete',
-                                            key=f'start_comp_{label}')
-        
-        # Initial stock values
-        col.subheader(f'{label} Initial Stock Parameters')
-        init_planning = col.number_input(f'In planning ({label})', 
-                                    value=16427,
-                                    step=1000,
-                                    key=f'init_plan_{label}')
-        
-        init_approved = col.number_input(f'Approved not started ({label})', 
-                                    value=14785,
-                                    step=1000,
-                                    key=f'init_app_{label}')
-        
-        init_started = col.number_input(f'Started ({label})', 
-                                    value=41964,
-                                    step=1000,
-                                    key=f'init_start_{label}')
-    elif label == "Public Sites":
-        # Flow times
-        application_rate = col.number_input(f'New Applications per Quarter ({label})', 
-                                        value=1289, 
-                                        step=100, key=f'app_rate_{label}')
-        
-        planning_time = col.number_input(f'Average Time to Get Planning Permission ({label})', 
-                                    value=9.3,
-                                    min_value=1.0, step=0.1, 
-                                    help='Average number of quarters it takes to get planning permission',
-                                    key=f'plan_time_{label}')
-        
-        start_time = col.number_input(f'Average Time from Approval to Start ({label})', 
-                                    value=15.5, 
-                                    min_value=1.0, step=0.1,
-                                    help='Average number of quarters between approval and construction start',
-                                    key=f'start_time_{label}')
-        
-        completion_time = col.number_input(f'Average Time from Start to Completion ({label})', 
-                                        value=25.6, 
-                                        min_value=1.0, step=0.1,
-                                        help='Average number of quarters from construction start to completion',
-                                        key=f'comp_time_{label}')
-        
-        # Success rates
-        planning_success_rate = col.slider(f'Planning Success Rate ({label})', 
-                                        0.0, 1.0, 0.99,
-                                        help='Proportion of planning applications that are successful',
-                                        key=f'plan_success_{label}')
-        
-        approved_to_start_rate = col.slider(f'Approved to Start Rate ({label})', 
-                                        0.0, 1.0, 0.99,
-                                        help='Proportion of approved developments that successfully start construction',
-                                        key=f'app_start_{label}')
-        
-        start_to_completion_rate = col.slider(f'Start to Completion Rate ({label})', 
-                                            0.0, 1.0, 0.9,
-                                            help='Proportion of started constructions that successfully complete',
-                                            key=f'start_comp_{label}')
-        
-        # Initial stock values
-        col.subheader(f'{label} Initial Stock Parameters')
-        init_planning = col.number_input(f'In planning ({label})', 
-                                    value=11560,
-                                    step=1000,
-                                    key=f'init_plan_{label}')
-        
-        init_approved = col.number_input(f'Approved not started ({label})', 
-                                    value=11445,
-                                    step=1000,
-                                    key=f'init_app_{label}')
-        
-        init_started = col.number_input(f'Started ({label})', 
-                                    value=32475,
-                                    step=1000,
-                                    key=f'init_start_{label}')
+                                    help='Average number of quarters from construction start to completion',
+                                    key=f'comp_time_{label}')
+
+    # Success rates
+    planning_success_rate = col.slider(f'Planning Success Rate ({label})',
+                                    0.0, 1.0, defaults['planning_success_rate'],
+                                    help='Proportion of planning applications that are successful',
+                                    key=f'plan_success_{label}')
+
+    approved_to_start_rate = col.slider(f'Approved to Start Rate ({label})',
+                                    0.0, 1.0, defaults['approved_to_start_rate'],
+                                    help='Proportion of approved developments that successfully start construction',
+                                    key=f'app_start_{label}')
+
+    start_to_completion_rate = col.slider(f'Start to Completion Rate ({label})',
+                                        0.0, 1.0, defaults['start_to_completion_rate'],
+                                        help='Proportion of started constructions that successfully complete',
+                                        key=f'start_comp_{label}')
+
+    # Initial stock values
+    col.subheader(f'{label} Initial Stock Parameters')
+    init_planning = col.number_input(f'In planning ({label})',
+                                value=defaults['init_planning'],
+                                step=1000,
+                                key=f'init_plan_{label}')
+
+    init_approved = col.number_input(f'Approved not started ({label})',
+                                value=defaults['init_approved'],
+                                step=1000,
+                                key=f'init_app_{label}')
+
+    init_started = col.number_input(f'Started ({label})',
+                                value=defaults['init_started'],
+                                step=1000,
+                                key=f'init_start_{label}')
+
     return {
         'application_rate': application_rate,
         'planning_time': planning_time,
@@ -460,8 +388,12 @@ def main():
                                             value="New Policy",
                                             help="Give your policy a descriptive name")
             
+            # Initialize threads if not present (for policy editor access before main tab)
+            if 'threads' not in st.session_state:
+                st.session_state.threads = list(DEFAULT_THREADS.keys())
+
             target_type = col_type.selectbox("Target Development Type",
-                                           ["All", "Large Private Sites", "Small Private Sites", "Public Sites"],
+                                           ["All"] + st.session_state.threads,
                                            help="Select which type of development this policy affects")
             
             # Second row: Timing, parameter, and change
@@ -546,221 +478,230 @@ def main():
     with tab_main:
         # Sidebar for parameters
         st.sidebar.header('Simulation Parameters')
-        
+
+        # Thread Manager section
+        st.sidebar.subheader('Thread Manager')
+
+        # Initialize session state for threads if not present
+        if 'threads' not in st.session_state:
+            st.session_state.threads = list(DEFAULT_THREADS.keys())
+
+        # Multiselect for active threads
+        active_threads = st.sidebar.multiselect(
+            'Active Threads',
+            options=list(DEFAULT_THREADS.keys()) + [t for t in st.session_state.threads if t not in DEFAULT_THREADS],
+            default=st.session_state.threads,
+            help='Select which threads to include in the simulation'
+        )
+
+        # Update session state with selected threads
+        st.session_state.threads = active_threads
+
+        # Add custom thread expander
+        with st.sidebar.expander('Add Custom Thread'):
+            new_thread_name = st.text_input('Thread Name', key='new_thread_name')
+            if st.button('Add Thread'):
+                if new_thread_name and new_thread_name not in st.session_state.threads:
+                    st.session_state.threads.append(new_thread_name)
+                    st.rerun()
+                elif new_thread_name in st.session_state.threads:
+                    st.warning('Thread already exists')
+                else:
+                    st.warning('Please enter a thread name')
+
         # Simulation timing
         st.sidebar.subheader('Simulation Timing')
         start_year = st.sidebar.number_input('Start Year', value=2024, min_value=2024, max_value=2050)
         start_quarter = st.sidebar.selectbox('Start Quarter', [1, 2, 3, 4], index=1)
         simulation_length = st.sidebar.number_input('Simulation Length (quarters)', value=23, min_value=1, max_value=100)
-        
-        # Create three columns for pipeline parameters
-        col1, col2, col3 = st.columns(3)
-        
-        # Get parameters for each pipeline
-        large_private_params = create_pipeline_parameters("Large Private Sites", col1)
-        small_private_params = create_pipeline_parameters("Small Private Sites", col2)
-        public_params = create_pipeline_parameters("Public Sites", col3)
+
+        # Dynamic columns for pipeline parameters
+        thread_names = st.session_state.threads
+        if thread_names:
+            cols = st.columns(len(thread_names))
+            thread_params = {}
+            for i, name in enumerate(thread_names):
+                # Use defaults from DEFAULT_THREADS if available, otherwise use Large Private Sites defaults
+                defaults = DEFAULT_THREADS.get(name, DEFAULT_THREADS["Large Private Sites"])
+                thread_params[name] = create_pipeline_parameters(name, cols[i], defaults)
+        else:
+            st.warning('No threads selected. Please add at least one thread in the sidebar.')
+            thread_params = {}
 
         if st.button('Run Simulation'):
-            # Run simulations for each pipeline type
-            pipeline_results = {}
-            for name, params in [
-                ("Large Private Sites", large_private_params),
-                ("Small Private Sites", small_private_params),
-                ("Public Sites", public_params)
-            ]:
-               
-                # Run simulation with policies
-                results = run_pipeline_simulation(
-                    name=name,
-                    simulation_length=simulation_length,
-                    init_planning=params['init_planning'],
-                    init_approved=params['init_approved'],
-                    init_started=params['init_started'],
-                    init_completed=0,
-                    application_rate=params['application_rate'],
-                    approval_rate=params['planning_time'],
-                    start_rate=params['start_time'],
-                    completion_rate=params['completion_time'],
-                    planning_success_rate=params['planning_success_rate'],
-                    approved_to_start_rate=params['approved_to_start_rate'],
-                    start_to_completion_rate=params['start_to_completion_rate'],
-                    start_year=start_year,
-                    start_quarter=start_quarter,
-                    policies=[
-                        {**p, 'target_type': p.get('target_type', 'All')}  # Ensure backward compatibility
-                        for p in st.session_state.policies
-                    ]  # Add policies to simulation
-                )
-                pipeline_results[name] = results
-            
-            # Create combined results
-            combined_results = pipeline_results["Large Private Sites"].copy()
-            for col in ['Applications', 'Approvals', 'Starts', 'Completions', 'Planning Stock', 'Approved Stock', 'Started Stock', 'Completed Stock']:
-                combined_results[col] = (
-                    pipeline_results["Large Private Sites"][col] +
-                    pipeline_results["Small Private Sites"][col] +
-                    pipeline_results["Public Sites"][col]
-                )
-            
-            # Create tabs for different views
-            tab_all, tab_large, tab_small, tab_public = st.tabs([
-                "All Sites Combined",
-                "Large Private Sites",
-                "Small Private Sites",
-                "Public Sites"
-            ])
-            
-            def create_plots(results, title_prefix=""):
-                # Define GLA colors from the grid
-                GLA_COLORS = {
-                    'dark_blue': '#4477AA',    # Top left
-                    'light_blue': '#88CCEE',   # Top middle
-                    'green': '#117733',        # Top right
-                    'yellow': '#DDCC77',       # Bottom left
-                    'red': '#CC6677',          # Bottom middle
-                    'purple': '#AA4499'        # Bottom right
-                }
+            if not thread_params:
+                st.error('No threads to simulate. Please add at least one thread.')
+            else:
+                # Run simulations for each pipeline type
+                pipeline_results = {}
+                for name in st.session_state.threads:
+                    params = thread_params[name]
 
-                fig = make_subplots(
-                    rows=3, cols=1,  # Changed from 4 to 3 rows
-                    subplot_titles=(
-                        f'{title_prefix}Quarterly Flow Rates',
-                        f'{title_prefix}Annual Totals',
-                        f'{title_prefix}Stock Evolution'
-                    ),
-                    vertical_spacing=0.1,
-                    row_heights=[0.33, 0.33, 0.34]  # Adjusted row heights to fill space evenly
-                )
-                
-                # Flow rates over time (Quarterly)
-                for name, color in [
-                    ('Applications', GLA_COLORS['dark_blue']),
-                    ('Approvals', GLA_COLORS['green']),
-                    ('Starts', GLA_COLORS['yellow']),
-                    ('Completions', GLA_COLORS['red'])
-                ]:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=results['Quarter'],
-                            y=results[name],
-                            name=name,
-                            line=dict(color=color)
-                        ),
-                        row=1, col=1
+                    # Run simulation with policies
+                    results = run_pipeline_simulation(
+                        name=name,
+                        simulation_length=simulation_length,
+                        init_planning=params['init_planning'],
+                        init_approved=params['init_approved'],
+                        init_started=params['init_started'],
+                        init_completed=0,
+                        application_rate=params['application_rate'],
+                        approval_rate=params['planning_time'],
+                        start_rate=params['start_time'],
+                        completion_rate=params['completion_time'],
+                        planning_success_rate=params['planning_success_rate'],
+                        approved_to_start_rate=params['approved_to_start_rate'],
+                        start_to_completion_rate=params['start_to_completion_rate'],
+                        start_year=start_year,
+                        start_quarter=start_quarter,
+                        policies=[
+                            {**p, 'target_type': p.get('target_type', 'All')}  # Ensure backward compatibility
+                            for p in st.session_state.policies
+                        ]  # Add policies to simulation
                     )
-                
-                # Calculate annual totals
-                results['Year'] = [q.split()[0] for q in results['Quarter']]
-                annual_totals = results.groupby('Year').sum()
-                # Drop the Quarter column from annual totals since it's not meaningful
-                annual_totals = annual_totals.drop('Quarter', axis=1, errors='ignore')
-                
-                # Annual totals line chart
-                for name, color in [
-                    ('Applications', GLA_COLORS['dark_blue']),
-                    ('Approvals', GLA_COLORS['green']),
-                    ('Starts', GLA_COLORS['yellow']),
-                    ('Completions', GLA_COLORS['red'])
-                ]:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=annual_totals.index,
-                            y=annual_totals[name],
-                            name=f'{name} (Annual)',
-                            line=dict(color=color),
-                            showlegend=False
-                        ),
-                        row=2, col=1
+                    pipeline_results[name] = results
+
+                # Create combined results
+                first_thread = st.session_state.threads[0]
+                combined_results = pipeline_results[first_thread].copy()
+                for col in ['Applications', 'Approvals', 'Starts', 'Completions', 'Planning Stock', 'Approved Stock', 'Started Stock', 'Completed Stock']:
+                    combined_results[col] = sum(
+                        pipeline_results[name][col] for name in st.session_state.threads
                     )
-                
-                # Stock evolution
-                for name, color in [
-                    ('Planning Stock', GLA_COLORS['dark_blue']),
-                    ('Approved Stock', GLA_COLORS['green']),
-                    ('Started Stock', GLA_COLORS['yellow']),
-                    ('Completed Stock', GLA_COLORS['red'])
-                ]:
-                    fig.add_trace(
-                        go.Scatter(
-                            x=results['Quarter'],
-                            y=results[name],
-                            name=f'{name}',
-                            line=dict(color=color)
+            
+                # Create tabs for different views dynamically
+                tab_names = ["All Sites Combined"] + st.session_state.threads
+                tabs = st.tabs(tab_names)
+
+                def create_plots(results, title_prefix=""):
+                    # Define GLA colors from the grid
+                    GLA_COLORS = {
+                        'dark_blue': '#4477AA',    # Top left
+                        'light_blue': '#88CCEE',   # Top middle
+                        'green': '#117733',        # Top right
+                        'yellow': '#DDCC77',       # Bottom left
+                        'red': '#CC6677',          # Bottom middle
+                        'purple': '#AA4499'        # Bottom right
+                    }
+
+                    fig = make_subplots(
+                        rows=3, cols=1,  # Changed from 4 to 3 rows
+                        subplot_titles=(
+                            f'{title_prefix}Quarterly Flow Rates',
+                            f'{title_prefix}Annual Totals',
+                            f'{title_prefix}Stock Evolution'
                         ),
-                        row=3, col=1
+                        vertical_spacing=0.1,
+                        row_heights=[0.33, 0.33, 0.34]  # Adjusted row heights to fill space evenly
                     )
 
-                # Update layout with light theme
-                fig.update_layout(
-                    height=1500,
-                    showlegend=True,
-                    barmode='group',
-                    plot_bgcolor='#f6f4f2',
-                    paper_bgcolor='#f6f4f2',
-                    font=dict(color='black')
-                )
-                
-                # Update axes labels
-                fig.update_xaxes(title_text='Quarter', row=1, col=1, gridcolor='lightgrey')
-                fig.update_xaxes(title_text='Year', row=2, col=1, gridcolor='lightgrey')
-                fig.update_xaxes(title_text='Quarter', row=3, col=1, gridcolor='lightgrey')
-                
-                fig.update_yaxes(title_text='Number of Units per Quarter', row=1, col=1, rangemode='nonnegative', gridcolor='lightgrey')
-                fig.update_yaxes(title_text='Number of Units per Year', row=2, col=1, rangemode='nonnegative', gridcolor='lightgrey')
-                fig.update_yaxes(title_text='Total Units in Stock', row=3, col=1, rangemode='nonnegative', gridcolor='lightgrey')
-                
-                # Rotate x-axis labels
-                fig.update_xaxes(tickangle=45, row=1, col=1)
-                fig.update_xaxes(tickangle=45, row=3, col=1)
-                
-                return fig, annual_totals
-            
-            # Display plots and data in tabs
-            with tab_all:
-                st.subheader('Combined Results (All Sites)')
-                fig, annual_totals = create_plots(combined_results)
-                st.plotly_chart(fig, use_container_width=True)
-                st.subheader('Quarterly Data')
-                st.dataframe(combined_results)
-                st.subheader('Annual Totals')
-                st.dataframe(annual_totals)
-            
-            with tab_large:
-                st.subheader('Large Private Sites Results')
-                fig, annual_totals = create_plots(
-                    pipeline_results["Large Private Sites"],
-                    "Large Private Sites - "
-                )
-                st.plotly_chart(fig, use_container_width=True)
-                st.subheader('Quarterly Data')
-                st.dataframe(pipeline_results["Large Private Sites"])
-                st.subheader('Annual Totals')
-                st.dataframe(annual_totals)
-            
-            with tab_small:
-                st.subheader('Small Private Sites Results')
-                fig, annual_totals = create_plots(
-                    pipeline_results["Small Private Sites"],
-                    "Small Private Sites - "
-                )
-                st.plotly_chart(fig, use_container_width=True)
-                st.subheader('Quarterly Data')
-                st.dataframe(pipeline_results["Small Private Sites"])
-                st.subheader('Annual Totals')
-                st.dataframe(annual_totals)
-            
-            with tab_public:
-                st.subheader('Public Sites Results')
-                fig, annual_totals = create_plots(
-                    pipeline_results["Public Sites"],
-                    "Public Sites - "
-                )
-                st.plotly_chart(fig, use_container_width=True)
-                st.subheader('Quarterly Data')
-                st.dataframe(pipeline_results["Public Sites"])
-                st.subheader('Annual Totals')
-                st.dataframe(annual_totals)
+                    # Flow rates over time (Quarterly)
+                    for name, color in [
+                        ('Applications', GLA_COLORS['dark_blue']),
+                        ('Approvals', GLA_COLORS['green']),
+                        ('Starts', GLA_COLORS['yellow']),
+                        ('Completions', GLA_COLORS['red'])
+                    ]:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=results['Quarter'],
+                                y=results[name],
+                                name=name,
+                                line=dict(color=color)
+                            ),
+                            row=1, col=1
+                        )
+
+                    # Calculate annual totals
+                    results['Year'] = [q.split()[0] for q in results['Quarter']]
+                    annual_totals = results.groupby('Year').sum()
+                    # Drop the Quarter column from annual totals since it's not meaningful
+                    annual_totals = annual_totals.drop('Quarter', axis=1, errors='ignore')
+
+                    # Annual totals line chart
+                    for name, color in [
+                        ('Applications', GLA_COLORS['dark_blue']),
+                        ('Approvals', GLA_COLORS['green']),
+                        ('Starts', GLA_COLORS['yellow']),
+                        ('Completions', GLA_COLORS['red'])
+                    ]:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=annual_totals.index,
+                                y=annual_totals[name],
+                                name=f'{name} (Annual)',
+                                line=dict(color=color),
+                                showlegend=False
+                            ),
+                            row=2, col=1
+                        )
+
+                    # Stock evolution
+                    for name, color in [
+                        ('Planning Stock', GLA_COLORS['dark_blue']),
+                        ('Approved Stock', GLA_COLORS['green']),
+                        ('Started Stock', GLA_COLORS['yellow']),
+                        ('Completed Stock', GLA_COLORS['red'])
+                    ]:
+                        fig.add_trace(
+                            go.Scatter(
+                                x=results['Quarter'],
+                                y=results[name],
+                                name=f'{name}',
+                                line=dict(color=color)
+                            ),
+                            row=3, col=1
+                        )
+
+                    # Update layout with light theme
+                    fig.update_layout(
+                        height=1500,
+                        showlegend=True,
+                        barmode='group',
+                        plot_bgcolor='#f6f4f2',
+                        paper_bgcolor='#f6f4f2',
+                        font=dict(color='black')
+                    )
+
+                    # Update axes labels
+                    fig.update_xaxes(title_text='Quarter', row=1, col=1, gridcolor='lightgrey')
+                    fig.update_xaxes(title_text='Year', row=2, col=1, gridcolor='lightgrey')
+                    fig.update_xaxes(title_text='Quarter', row=3, col=1, gridcolor='lightgrey')
+
+                    fig.update_yaxes(title_text='Number of Units per Quarter', row=1, col=1, rangemode='nonnegative', gridcolor='lightgrey')
+                    fig.update_yaxes(title_text='Number of Units per Year', row=2, col=1, rangemode='nonnegative', gridcolor='lightgrey')
+                    fig.update_yaxes(title_text='Total Units in Stock', row=3, col=1, rangemode='nonnegative', gridcolor='lightgrey')
+
+                    # Rotate x-axis labels
+                    fig.update_xaxes(tickangle=45, row=1, col=1)
+                    fig.update_xaxes(tickangle=45, row=3, col=1)
+
+                    return fig, annual_totals
+
+                # Display plots and data in tabs
+                # First tab is combined results
+                with tabs[0]:
+                    st.subheader('Combined Results (All Sites)')
+                    fig, annual_totals = create_plots(combined_results)
+                    st.plotly_chart(fig, use_container_width=True)
+                    st.subheader('Quarterly Data')
+                    st.dataframe(combined_results)
+                    st.subheader('Annual Totals')
+                    st.dataframe(annual_totals)
+
+                # Remaining tabs are individual threads
+                for i, thread_name in enumerate(st.session_state.threads):
+                    with tabs[i + 1]:
+                        st.subheader(f'{thread_name} Results')
+                        fig, annual_totals = create_plots(
+                            pipeline_results[thread_name],
+                            f"{thread_name} - "
+                        )
+                        st.plotly_chart(fig, use_container_width=True)
+                        st.subheader('Quarterly Data')
+                        st.dataframe(pipeline_results[thread_name])
+                        st.subheader('Annual Totals')
+                        st.dataframe(annual_totals)
 
 if __name__ == "__main__":
     main()

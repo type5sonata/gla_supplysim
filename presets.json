@@ -1,0 +1,21 @@
+{
+  "Molior only": {
+    "threads": [
+      "All"
+    ],
+    "params": {
+      "All": {
+        "application_rate": 6455,
+        "planning_time": 9.3,
+        "start_time": 9.4,
+        "completion_time": 28.3,
+        "planning_success_rate": 0.9,
+        "approved_to_start_rate": 0.7,
+        "start_to_completion_rate": 0.9,
+        "init_planning": 59743,
+        "init_approved": 53769,
+        "init_started": 152570
+      }
+    }
+  }
+}

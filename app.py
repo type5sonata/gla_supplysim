@@ -6,6 +6,40 @@ import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 import os
+import json
+
+PRESETS_FILE = os.path.join(os.path.dirname(__file__), 'presets.json')
+
+def load_presets_from_file():
+    """Load all saved presets from file"""
+    if os.path.exists(PRESETS_FILE):
+        try:
+            with open(PRESETS_FILE, 'r') as f:
+                return json.load(f)
+        except (json.JSONDecodeError, IOError):
+            return {}
+    return {}
+
+def save_presets_to_file(presets):
+    """Save all presets to file"""
+    with open(PRESETS_FILE, 'w') as f:
+        json.dump(presets, f, indent=2)
+
+def save_preset(name, thread_params, active_threads):
+    """Save current configuration as a preset"""
+    presets = load_presets_from_file()
+    presets[name] = {
+        'threads': active_threads,
+        'params': thread_params
+    }
+    save_presets_to_file(presets)
+
+def delete_preset(name):
+    """Delete a preset by name"""
+    presets = load_presets_from_file()
+    if name in presets:
+        del presets[name]
+        save_presets_to_file(presets)
 
 def load_historic_data():
     """Load historic data from CSV file"""
@@ -547,6 +581,30 @@ def main():
                 else:
                     st.warning('Please enter a thread name')
 
+        # Preset Manager section
+        st.sidebar.subheader('Presets')
+
+        # Load preset
+        saved_presets = load_presets_from_file()
+        preset_names = list(saved_presets.keys())
+
+        if preset_names:
+            with st.sidebar.expander('Load Preset'):
+                selected_preset = st.selectbox('Select Preset', preset_names, key='load_preset_select')
+                col1, col2 = st.columns(2)
+                if col1.button('Load', key='load_preset_btn'):
+                    preset_data = saved_presets[selected_preset]
+                    st.session_state.threads = preset_data['threads']
+                    st.session_state.loaded_preset_params = preset_data['params']
+                    st.success(f'Loaded "{selected_preset}"')
+                    st.rerun()
+                if col2.button('Delete', key='delete_preset_btn'):
+                    delete_preset(selected_preset)
+                    st.success(f'Deleted "{selected_preset}"')
+                    st.rerun()
+        else:
+            st.sidebar.info('No saved presets yet')
+
         # Simulation timing
         st.sidebar.subheader('Simulation Timing')
         start_year = st.sidebar.number_input('Start Year', value=2024, min_value=2024, max_value=2050)
@@ -559,12 +617,29 @@ def main():
             cols = st.columns(len(thread_names))
             thread_params = {}
             for i, name in enumerate(thread_names):
-                # Use defaults from DEFAULT_THREADS if available, otherwise use Large Private Sites defaults
-                defaults = DEFAULT_THREADS.get(name, DEFAULT_THREADS["Large Private Sites"])
+                # Check for loaded preset params first, then DEFAULT_THREADS, then fallback
+                if 'loaded_preset_params' in st.session_state and name in st.session_state.loaded_preset_params:
+                    defaults = st.session_state.loaded_preset_params[name]
+                elif name in DEFAULT_THREADS:
+                    defaults = DEFAULT_THREADS[name]
+                else:
+                    defaults = DEFAULT_THREADS["Large Private Sites"]
                 thread_params[name] = create_pipeline_parameters(name, cols[i], defaults)
         else:
             st.warning('No threads selected. Please add at least one thread in the sidebar.')
             thread_params = {}
+
+        # Save preset section (after parameters are defined)
+        if thread_params:
+            with st.sidebar.expander('Save Current as Preset'):
+                preset_name = st.text_input('Preset Name', key='save_preset_name')
+                if st.button('Save Preset', key='save_preset_btn'):
+                    if preset_name:
+                        save_preset(preset_name, thread_params, st.session_state.threads)
+                        st.success(f'Saved preset "{preset_name}"')
+                        st.rerun()
+                    else:
+                        st.warning('Please enter a preset name')
 
         if st.button('Run Simulation'):
             if not thread_params:
@@ -625,19 +700,32 @@ def main():
                         'red': '#CC6677',          # Bottom middle
                         'purple': '#AA4499'        # Bottom right
                     }
+                    GREY = '#888888'
 
+                    # Create subplot layout: 4 rows
+                    # Row 1: Quarterly Flow Rates (full width)
+                    # Rows 2-3: Annual Totals as 2x2 grid of bar charts
+                    # Row 4: Stock Evolution (full width)
                     fig = make_subplots(
-                        rows=3, cols=1,  # Changed from 4 to 3 rows
+                        rows=4, cols=2,
                         subplot_titles=(
-                            f'{title_prefix}Quarterly Flow Rates',
-                            f'{title_prefix}Annual Totals',
-                            f'{title_prefix}Stock Evolution'
+                            f'{title_prefix}Quarterly Flow Rates', '',
+                            'Applications (Annual)', 'Approvals (Annual)',
+                            'Starts (Annual)', 'Completions (Annual)',
+                            f'{title_prefix}Stock Evolution', ''
                         ),
-                        vertical_spacing=0.1,
-                        row_heights=[0.33, 0.33, 0.34]  # Adjusted row heights to fill space evenly
+                        vertical_spacing=0.08,
+                        horizontal_spacing=0.08,
+                        row_heights=[0.25, 0.25, 0.25, 0.25],
+                        specs=[
+                            [{"colspan": 2}, None],
+                            [{}, {}],
+                            [{}, {}],
+                            [{"colspan": 2}, None]
+                        ]
                     )
 
-                    # Add historic data first (if available) - dashed lines
+                    # Add historic data first (if available) - dashed lines for quarterly
                     if historic_data is not None and len(historic_data) > 0:
                         for name, color in [
                             ('Applications', GLA_COLORS['dark_blue']),
@@ -678,7 +766,6 @@ def main():
                     # Calculate annual totals for simulation
                     results['Year'] = [q.split()[0] for q in results['Quarter']]
                     annual_totals = results.groupby('Year').sum()
-                    # Drop the Quarter column from annual totals since it's not meaningful
                     annual_totals = annual_totals.drop('Quarter', axis=1, errors='ignore')
 
                     # Calculate annual totals for historic data
@@ -689,42 +776,46 @@ def main():
                         historic_annual_totals = historic_data_copy.groupby('Year').sum()
                         historic_annual_totals = historic_annual_totals.drop('Quarter', axis=1, errors='ignore')
 
-                    # Add historic annual totals first (dashed lines)
-                    if historic_annual_totals is not None and len(historic_annual_totals) > 0:
-                        for name, color in [
-                            ('Applications', GLA_COLORS['dark_blue']),
-                            ('Approvals', GLA_COLORS['green']),
-                            ('Starts', GLA_COLORS['yellow']),
-                            ('Completions', GLA_COLORS['red'])
-                        ]:
+                    # Get all years for x-axis alignment
+                    all_years = set(annual_totals.index.tolist())
+                    if historic_annual_totals is not None:
+                        all_years.update(historic_annual_totals.index.tolist())
+                    all_years = sorted(all_years)
+
+                    # Create stacked bar charts for each metric
+                    metrics_positions = [
+                        ('Applications', GLA_COLORS['dark_blue'], 2, 1),
+                        ('Approvals', GLA_COLORS['green'], 2, 2),
+                        ('Starts', GLA_COLORS['yellow'], 3, 1),
+                        ('Completions', GLA_COLORS['red'], 3, 2)
+                    ]
+
+                    for metric, color, row, col in metrics_positions:
+                        # Historic bars (grey)
+                        if historic_annual_totals is not None and len(historic_annual_totals) > 0:
                             fig.add_trace(
-                                go.Scatter(
+                                go.Bar(
                                     x=historic_annual_totals.index,
-                                    y=historic_annual_totals[name],
-                                    name=f'{name} (Historic Annual)',
-                                    line=dict(color=color, dash='dash'),
-                                    legendgroup=name,
-                                    showlegend=False
+                                    y=historic_annual_totals[metric],
+                                    name='Historic',
+                                    marker_color=GREY,
+                                    legendgroup='historic',
+                                    showlegend=(metric == 'Applications')
                                 ),
-                                row=2, col=1
+                                row=row, col=col
                             )
 
-                    # Annual totals line chart - simulation data
-                    for name, color in [
-                        ('Applications', GLA_COLORS['dark_blue']),
-                        ('Approvals', GLA_COLORS['green']),
-                        ('Starts', GLA_COLORS['yellow']),
-                        ('Completions', GLA_COLORS['red'])
-                    ]:
+                        # Simulation bars (colorful)
                         fig.add_trace(
-                            go.Scatter(
+                            go.Bar(
                                 x=annual_totals.index,
-                                y=annual_totals[name],
-                                name=f'{name} (Annual)',
-                                line=dict(color=color),
-                                showlegend=False
+                                y=annual_totals[metric],
+                                name='Simulated',
+                                marker_color=color,
+                                legendgroup='simulated',
+                                showlegend=(metric == 'Applications')
                             ),
-                            row=2, col=1
+                            row=row, col=col
                         )
 
                     # Stock evolution
@@ -741,31 +832,33 @@ def main():
                                 name=f'{name}',
                                 line=dict(color=color)
                             ),
-                            row=3, col=1
+                            row=4, col=1
                         )
 
                     # Update layout with light theme
                     fig.update_layout(
-                        height=1500,
+                        height=1800,
                         showlegend=True,
-                        barmode='group',
+                        barmode='stack',
                         plot_bgcolor='#f6f4f2',
                         paper_bgcolor='#f6f4f2',
                         font=dict(color='black')
                     )
 
                     # Update axes labels
-                    fig.update_xaxes(title_text='Quarter', row=1, col=1, gridcolor='lightgrey')
-                    fig.update_xaxes(title_text='Year', row=2, col=1, gridcolor='lightgrey')
-                    fig.update_xaxes(title_text='Quarter', row=3, col=1, gridcolor='lightgrey')
+                    fig.update_xaxes(title_text='Quarter', row=1, col=1, gridcolor='lightgrey', tickangle=45)
+                    fig.update_xaxes(title_text='Year', row=2, col=1, gridcolor='lightgrey', tickangle=45)
+                    fig.update_xaxes(title_text='Year', row=2, col=2, gridcolor='lightgrey', tickangle=45)
+                    fig.update_xaxes(title_text='Year', row=3, col=1, gridcolor='lightgrey', tickangle=45)
+                    fig.update_xaxes(title_text='Year', row=3, col=2, gridcolor='lightgrey', tickangle=45)
+                    fig.update_xaxes(title_text='Quarter', row=4, col=1, gridcolor='lightgrey', tickangle=45)
 
-                    fig.update_yaxes(title_text='Number of Units per Quarter', row=1, col=1, rangemode='nonnegative', gridcolor='lightgrey')
-                    fig.update_yaxes(title_text='Number of Units per Year', row=2, col=1, rangemode='nonnegative', gridcolor='lightgrey')
-                    fig.update_yaxes(title_text='Total Units in Stock', row=3, col=1, rangemode='nonnegative', gridcolor='lightgrey')
-
-                    # Rotate x-axis labels
-                    fig.update_xaxes(tickangle=45, row=1, col=1)
-                    fig.update_xaxes(tickangle=45, row=3, col=1)
+                    fig.update_yaxes(title_text='Units per Quarter', row=1, col=1, rangemode='nonnegative', gridcolor='lightgrey')
+                    fig.update_yaxes(title_text='Units per Year', row=2, col=1, rangemode='nonnegative', gridcolor='lightgrey')
+                    fig.update_yaxes(title_text='Units per Year', row=2, col=2, rangemode='nonnegative', gridcolor='lightgrey')
+                    fig.update_yaxes(title_text='Units per Year', row=3, col=1, rangemode='nonnegative', gridcolor='lightgrey')
+                    fig.update_yaxes(title_text='Units per Year', row=3, col=2, rangemode='nonnegative', gridcolor='lightgrey')
+                    fig.update_yaxes(title_text='Total Units in Stock', row=4, col=1, rangemode='nonnegative', gridcolor='lightgrey')
 
                     return fig, annual_totals
 

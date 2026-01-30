@@ -5,6 +5,44 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import os
+
+def load_historic_data():
+    """Load historic data from CSV file"""
+    csv_path = os.path.join(os.path.dirname(__file__), 'historic.csv')
+    if os.path.exists(csv_path):
+        df = pd.read_csv(csv_path)
+        # Rename the quarter column for consistency
+        df = df.rename(columns={'Year + Q': 'Quarter'})
+        # Clean up any comma-formatted numbers
+        for col in ['Applications', 'Approvals', 'Starts', 'Completions']:
+            if col in df.columns:
+                df[col] = df[col].astype(str).str.replace(',', '').astype(float).astype(int)
+        # Remove duplicate quarters, keeping the last occurrence
+        df = df.drop_duplicates(subset=['Quarter'], keep='last')
+        return df
+    return None
+
+def filter_historic_data(historic_df, start_year, start_quarter):
+    """Filter historic data to only include data before the start date"""
+    if historic_df is None:
+        return None
+
+    filtered_rows = []
+    for _, row in historic_df.iterrows():
+        quarter_str = row['Quarter']
+        # Parse the quarter string (e.g., "2024 Q1")
+        parts = quarter_str.split()
+        year = int(parts[0])
+        quarter = int(parts[1][1])
+
+        # Include only data before the start date
+        if year < start_year or (year == start_year and quarter < start_quarter):
+            filtered_rows.append(row)
+
+    if filtered_rows:
+        return pd.DataFrame(filtered_rows)
+    return None
 
 # Default thread configurations
 DEFAULT_THREADS = {
@@ -532,6 +570,10 @@ def main():
             if not thread_params:
                 st.error('No threads to simulate. Please add at least one thread.')
             else:
+                # Load and filter historic data
+                historic_df = load_historic_data()
+                filtered_historic = filter_historic_data(historic_df, start_year, start_quarter)
+
                 # Run simulations for each pipeline type
                 pipeline_results = {}
                 for name in st.session_state.threads:
@@ -573,7 +615,7 @@ def main():
                 tab_names = ["All Sites Combined"] + st.session_state.threads
                 tabs = st.tabs(tab_names)
 
-                def create_plots(results, title_prefix=""):
+                def create_plots(results, title_prefix="", historic_data=None):
                     # Define GLA colors from the grid
                     GLA_COLORS = {
                         'dark_blue': '#4477AA',    # Top left
@@ -595,7 +637,27 @@ def main():
                         row_heights=[0.33, 0.33, 0.34]  # Adjusted row heights to fill space evenly
                     )
 
-                    # Flow rates over time (Quarterly)
+                    # Add historic data first (if available) - dashed lines
+                    if historic_data is not None and len(historic_data) > 0:
+                        for name, color in [
+                            ('Applications', GLA_COLORS['dark_blue']),
+                            ('Approvals', GLA_COLORS['green']),
+                            ('Starts', GLA_COLORS['yellow']),
+                            ('Completions', GLA_COLORS['red'])
+                        ]:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=historic_data['Quarter'],
+                                    y=historic_data[name],
+                                    name=f'{name} (Historic)',
+                                    line=dict(color=color, dash='dash'),
+                                    legendgroup=name,
+                                    showlegend=True
+                                ),
+                                row=1, col=1
+                            )
+
+                    # Flow rates over time (Quarterly) - simulation data with solid lines
                     for name, color in [
                         ('Applications', GLA_COLORS['dark_blue']),
                         ('Approvals', GLA_COLORS['green']),
@@ -607,18 +669,47 @@ def main():
                                 x=results['Quarter'],
                                 y=results[name],
                                 name=name,
-                                line=dict(color=color)
+                                line=dict(color=color),
+                                legendgroup=name
                             ),
                             row=1, col=1
                         )
 
-                    # Calculate annual totals
+                    # Calculate annual totals for simulation
                     results['Year'] = [q.split()[0] for q in results['Quarter']]
                     annual_totals = results.groupby('Year').sum()
                     # Drop the Quarter column from annual totals since it's not meaningful
                     annual_totals = annual_totals.drop('Quarter', axis=1, errors='ignore')
 
-                    # Annual totals line chart
+                    # Calculate annual totals for historic data
+                    historic_annual_totals = None
+                    if historic_data is not None and len(historic_data) > 0:
+                        historic_data_copy = historic_data.copy()
+                        historic_data_copy['Year'] = [q.split()[0] for q in historic_data_copy['Quarter']]
+                        historic_annual_totals = historic_data_copy.groupby('Year').sum()
+                        historic_annual_totals = historic_annual_totals.drop('Quarter', axis=1, errors='ignore')
+
+                    # Add historic annual totals first (dashed lines)
+                    if historic_annual_totals is not None and len(historic_annual_totals) > 0:
+                        for name, color in [
+                            ('Applications', GLA_COLORS['dark_blue']),
+                            ('Approvals', GLA_COLORS['green']),
+                            ('Starts', GLA_COLORS['yellow']),
+                            ('Completions', GLA_COLORS['red'])
+                        ]:
+                            fig.add_trace(
+                                go.Scatter(
+                                    x=historic_annual_totals.index,
+                                    y=historic_annual_totals[name],
+                                    name=f'{name} (Historic Annual)',
+                                    line=dict(color=color, dash='dash'),
+                                    legendgroup=name,
+                                    showlegend=False
+                                ),
+                                row=2, col=1
+                            )
+
+                    # Annual totals line chart - simulation data
                     for name, color in [
                         ('Applications', GLA_COLORS['dark_blue']),
                         ('Approvals', GLA_COLORS['green']),
@@ -682,8 +773,11 @@ def main():
                 # First tab is combined results
                 with tabs[0]:
                     st.subheader('Combined Results (All Sites)')
-                    fig, annual_totals = create_plots(combined_results)
+                    fig, annual_totals = create_plots(combined_results, historic_data=filtered_historic)
                     st.plotly_chart(fig, use_container_width=True)
+                    if filtered_historic is not None:
+                        st.subheader('Historic Data (Up to Start Date)')
+                        st.dataframe(filtered_historic)
                     st.subheader('Quarterly Data')
                     st.dataframe(combined_results)
                     st.subheader('Annual Totals')
@@ -695,9 +789,13 @@ def main():
                         st.subheader(f'{thread_name} Results')
                         fig, annual_totals = create_plots(
                             pipeline_results[thread_name],
-                            f"{thread_name} - "
+                            f"{thread_name} - ",
+                            historic_data=filtered_historic
                         )
                         st.plotly_chart(fig, use_container_width=True)
+                        if filtered_historic is not None:
+                            st.subheader('Historic Data (Up to Start Date)')
+                            st.dataframe(filtered_historic)
                         st.subheader('Quarterly Data')
                         st.dataframe(pipeline_results[thread_name])
                         st.subheader('Annual Totals')

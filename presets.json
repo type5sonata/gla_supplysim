@@ -17,5 +17,24 @@
         "init_started": 152570
       }
     }
+  },
+  "Molior single-thread": {
+    "threads": [
+      "All"
+    ],
+    "params": {
+      "All": {
+        "application_rate": 6500,
+        "planning_time": 4.7,
+        "start_time": 105.71,
+        "completion_time": 7.93,
+        "planning_success_rate": 1.0,
+        "approved_to_start_rate": 1.0,
+        "start_to_completion_rate": 1.0,
+        "init_planning": 30000,
+        "init_approved": 242500,
+        "init_started": 37500
+      }
+    }
   }
 }

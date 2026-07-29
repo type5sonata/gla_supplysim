@@ -1,0 +1,116 @@
+{
+  "Molior only": {
+    "threads": [
+      "All"
+    ],
+    "params": {
+      "All": {
+        "application_rate": 6455,
+        "planning_time": 9.3,
+        "start_time": 9.4,
+        "completion_time": 28.3,
+        "planning_success_rate": 0.9,
+        "approved_to_start_rate": 0.7,
+        "start_to_completion_rate": 0.9,
+        "init_planning": 59743,
+        "init_approved": 53769,
+        "init_started": 152570
+      }
+    }
+  },
+  "Molior single-thread": {
+    "threads": [
+      "All"
+    ],
+    "params": {
+      "All": {
+        "application_rate": 6500,
+        "planning_time": 4.7,
+        "start_time": 105.71,
+        "completion_time": 7.93,
+        "planning_success_rate": 1.0,
+        "approved_to_start_rate": 1.0,
+        "start_to_completion_rate": 1.0,
+        "init_planning": 30000,
+        "init_approved": 242500,
+        "init_started": 37500
+      }
+    }
+  },
+  "Molior (5Q rolling average)": {
+    "threads": [
+      "All sites"
+    ],
+    "params": {
+      "All sites": {
+        "application_rate": 6574,
+        "planning_time": 7.5,
+        "start_time": 148.3,
+        "completion_time": 8.1,
+        "planning_success_rate": 0.86,
+        "approved_to_start_rate": 0.64,
+        "start_to_completion_rate": 1.0,
+        "init_planning": 44874,
+        "init_approved": 306562,
+        "init_started": 37500
+      }
+    }
+  },
+  "Molior (BSR adjusted 5Q rolling average)": {
+    "threads": [
+      "All sites"
+    ],
+    "params": {
+      "All sites": {
+        "application_rate": 6574,
+        "planning_time": 7.5,
+        "start_time": 79.5,
+        "completion_time": 8.1,
+        "planning_success_rate": 0.86,
+        "approved_to_start_rate": 0.64,
+        "start_to_completion_rate": 1.0,
+        "init_planning": 44874,
+        "init_approved": 306562,
+        "init_started": 37500
+      }
+    }
+  },
+  "Molior (2016-2020 q1 average)": {
+    "threads": [
+      "All sites"
+    ],
+    "params": {
+      "All sites": {
+        "application_rate": 9862,
+        "planning_time": 4.5,
+        "start_time": 37.0,
+        "completion_time": 2.0,
+        "planning_success_rate": 0.86,
+        "approved_to_start_rate": 0.64,
+        "start_to_completion_rate": 1.0,
+        "init_planning": 44874,
+        "init_approved": 306562,
+        "init_started": 37500
+      }
+    }
+  },
+  "Emergency measures effect (Business LDN)": {
+    "threads": [
+      "All sites"
+    ],
+    "params": {
+      "All sites": {
+        "application_rate": 6574,
+        "planning_time": 7.5,
+        "start_time": 79.5,
+        "completion_time": 8.1,
+        "planning_success_rate": 0.86,
+        "approved_to_start_rate": 0.64,
+        "start_to_completion_rate": 1.0,
+        "init_planning": 44874,
+        "init_approved": 306562,
+        "init_started": 37500
+      }
+    }
+  }
+}

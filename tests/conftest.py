@@ -1,6 +1,6 @@
 import pytest
 import simpy
-from app import MonitoredContainer
+from src.containers import MonitoredContainer
 
 @pytest.fixture
 def env():

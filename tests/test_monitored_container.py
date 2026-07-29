@@ -1,6 +1,6 @@
 import pytest
 import simpy
-from app import MonitoredContainer
+from src.containers import MonitoredContainer
 
 def test_monitored_container_initial_state():
     """Test the initial state of MonitoredContainer"""

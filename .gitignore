@@ -1,8 +1,12 @@
-# Exclude all Word documents
+# ---------------------------------------------------------------------------
+# Data
+# ---------------------------------------------------------------------------
+# data/ IS committed. This repository is internal to the GLA, so the historic
+# series (Molior-derived) lives in the repo. Do not push this anywhere public.
+
+# Office documents (may contain unpublished figures)
 *.doc
 *.docx
-
-# Exclude all Excel documents
 *.xls
 *.xlsx
 *.xlsm
@@ -11,5 +15,28 @@
 *.xltx
 *.xltm
 
-# Exclude all CSV files
-*.csv
+# Local archive of superseded material
+_archive/
+
+# ---------------------------------------------------------------------------
+# Python
+# ---------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+env/
+.pytest_cache/
+.ipynb_checkpoints/
+
+# ---------------------------------------------------------------------------
+# Editors / OS
+# ---------------------------------------------------------------------------
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+# Agent scratch
+.claude/
+CLAUDE.md
